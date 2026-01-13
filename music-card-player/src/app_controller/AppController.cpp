@@ -1,9 +1,28 @@
 #include "App.hpp"
 
-App::App(int argc, char* argv[]) : argc(argc), argv(argv) {}
 
-App::~App() {}
+void AppController::run() {
 
-int App::run() {
-    return 0;
-}
+    ButtonManager buttonManager;
+    ScreenManager screenManager;
+    
+    auto stateMachine = buildStateMachine(screenManager);
+    
+    while (true) {
+        
+        if (buttonManager.isUpButtonPressed()) {
+            stateMachine->onUpButton();
+        }
+        if (buttonManager.isDownButtonPressed()) {
+            stateMachine->onDownButton();
+        }
+        if (buttonManager.isSelectButtonPressed()) {
+            stateMachine->onSelectButton();
+        }
+        if (buttonManager.isBackButtonPressed()) {
+            stateMachine->onBackButton();
+        }
+
+        screenManager.update();
+    }
+};

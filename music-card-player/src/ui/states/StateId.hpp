@@ -1,0 +1,12 @@
+#pragma once
+
+enum class StateId {
+    MAIN_MENU,
+    PLAYER,
+    BLUETOOTH_MENU,
+    SAVED_DEVICES,
+    CONNECT_NEW,
+    SEARCHING_FOR_DEVICES,
+    FOUND_DEVICES,
+    CONNECTING
+};
