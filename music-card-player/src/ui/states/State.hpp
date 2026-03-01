@@ -1,27 +1,45 @@
 #pragma once
 
-#include "Screen.hpp"
-#include "Menu.hpp"
-#include "state_id/StateId.hpp"
+#include "../screen/Screen.hpp"
+#include "../event/EventBus.hpp"
+#include "../event/Event.hpp"
+#include "../view/Renderer.hpp"
+#include "../view/View.hpp"
 
-class StateMachine;
 
 class State {
-protected:
-    StateMachine& context;
 public:
-    State(StateMachine& _context) : context(_context) {}
+    State(EventBus& _bus, Renderer& _renderer, View& _view, std::string _name) 
+    : bus(_bus)
+    , renderer(_renderer)
+    , view(_view)
+    , name(_name)
+    { }
+
+    std::string getName() const { return name; }
+
     virtual ~State() = default;
 
-    virtual void onEntry() = 0;
-    virtual void onExit() = 0;
+    // Default onEntry renders the view. Override and call State::onEntry()
+    // at the end to keep the render, or call renderer.render(view) yourself.
+    virtual void onEntry() { renderer.render(view); }
+    virtual void onExit() {}
 
-    // These button event handlers return a pointer to the state to transition to
-    virtual State* onUpButton() { return this };
-    virtual State* onDownButton() { return this };
-    virtual State* onSelectButton() { return this };
-    virtual State* onBackButton() { return this };
+    // Physical event handlers
+    // These decide on the intention of the user (if any) and emit that event
+    virtual void onEvent(const UpButtonPressed&) { }
+    virtual void onEvent(const DownButtonPressed&) { }
+    virtual void onEvent(const SelectButtonPressed&) { }
+    virtual void onEvent(const BackButtonPressed&) { }
 
-    // Helper method to get state by ID through context
-    State* getState(StateId stateId);
+    // Event handlers must always be called "onEvent" with different input event types.
+    // This allows the StateMachine to call them generically.
+
+protected:
+    EventBus& bus;
+    Renderer& renderer;
+
+private:
+    View& view;
+    std::string name;
 };

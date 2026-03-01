@@ -1,31 +1,23 @@
 #pragma once
 
-#include "state/MenuState.hpp"
-#include "state_id/StateId.hpp"
-#include "state_machine/StateMachine.hpp"
-#include "storage/DeviceStorage.hpp"
-#include <memory>
-#include <iostream>
+#include "../../roles/menu_state/MenuState.hpp"
+#include "../../../../storage/DeviceStorage.hpp"
 
 
-class SavedDevices : public MenuState {
-    public:
-        
-        void onEntry() override {
-            // Reload devices in case they changed
-            menu.clear();
-            // Load saved devices from storage and populate menu
-            loadSavedDevices();
-            std::cout << "Saved Devices" << std::endl;
-        }
-        
-        void onExit() override {}
-        
-        State* onBackButton() override {
-            // Go back to Bluetooth menu
-            return getState(StateId::BLUETOOTH_MENU);
-        }
-    
-    private:
-        void loadSavedDevices();
-    };
+class SavedDevicesMenu : public MenuState {
+public:
+    explicit SavedDevicesMenu(EventBus& bus, Renderer& renderer, MenuView& view, std::string _name)
+    : MenuState(bus, renderer, view, _name)
+    {
+        view.title = "Saved Devices";
+    }
+
+    void onEntry() override {
+        items.clear();
+        loadSavedDevices();
+        MenuState::onEntry();
+    }
+
+private:
+    void loadSavedDevices();
+};

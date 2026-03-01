@@ -1,7 +1,18 @@
 #include "StateMachine.hpp"
 
-StateMachine::StateMachine(ScreenManager& _screenManager)
-    : screenManager(_screenManager), currentState(nullptr) {}
+StateMachine::StateMachine()
+    : currentState(nullptr)
+    , currentStateId{}
+{}
+
+void StateMachine::setViews(std::unique_ptr<MenuView> mv,
+                            std::unique_ptr<LoadingView> lv,
+                            std::unique_ptr<PlayerView> pv) {
+    menuView = std::move(mv);
+    loadingView = std::move(lv);
+    playerView = std::move(pv);
+}
+
 
 void StateMachine::registerState(StateId id, std::unique_ptr<State> state) {
     stateRegistry[id] = std::move(state);
@@ -15,8 +26,25 @@ State* StateMachine::getState(StateId id) {
 void StateMachine::transitionTo(StateId id) {
     State* newState = getState(id);
     if (newState && newState != currentState) {
+        // Push the current state onto the history stack before leaving
+        if (currentState) {
+            history.push_back(currentStateId);
+        }
         performTransition(newState);
         currentStateId = id;
+    }
+}
+
+void StateMachine::goBack() {
+    if (history.empty()) return;
+
+    StateId previousId = history.back();
+    history.pop_back();
+
+    State* previousState = getState(previousId);
+    if (previousState) {
+        performTransition(previousState);
+        currentStateId = previousId;
     }
 }
 
@@ -25,46 +53,10 @@ void StateMachine::performTransition(State* newState) {
         currentState->onExit();
     }
     currentState = newState;
-    currentStateId = newState->getStateId();
     if (currentState) {
         currentState->onEntry();
     }
-    // screenManager.set(newScreen);   // TODO: Implement screen management
-
 }
 
-void StateMachine::onUpButton() {
-    if (currentState) {
-        State* nextState = currentState->onUpButton();
-        if (nextState && nextState != currentState) {
-            performTransition(nextState);
-        }
-    }
-}
-
-void StateMachine::onDownButton() {
-    if (currentState) {
-        State* nextState = currentState->onDownButton();
-        if (nextState && nextState != currentState) {
-            performTransition(nextState);
-        }
-    }
-}
-
-void StateMachine::onSelectButton() {
-    if (currentState) {
-        State* nextState = currentState->onSelectButton();
-        if (nextState && nextState != currentState) {
-            performTransition(nextState);
-        }
-    }
-}
-
-void StateMachine::onBackButton() {
-    if (currentState) {
-        State* nextState = currentState->onBackButton();
-        if (nextState && nextState != currentState) {
-            performTransition(nextState);
-        }
-    }
-}
+// Note: onEvent is now a template defined in StateMachine.hpp.
+// It forwards any event to the current state's onEvent handler.

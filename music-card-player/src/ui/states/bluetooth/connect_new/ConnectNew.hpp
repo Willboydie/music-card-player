@@ -1,24 +1,20 @@
 #pragma once
 
-#include "../State.hpp"
+#include "../../State.hpp"
 
 class ConnectNew : public State {
 public:
-    ConnectNew(StateMachine& _context) : State(_context) {}
-    
-    void onEntry() override {
-        std::cout << "Click to search for devices. Make sure your device is in pairing mode." << std::endl;
+    explicit ConnectNew(EventBus& bus, Renderer& renderer, LoadingView& view, std::string name)
+    : State(bus, renderer, view, name)
+    {
+        view.message = "Press select to search";
     }
-    
-    void onExit() override {}
-    
-    State* onSelectButton() override {
-        // Start searching for devices
-        return getState(StateId::SEARCHING_FOR_DEVICES);
+
+    void onEvent(const SelectButtonPressed&) override {
+        bus.publish(BluetoothDeviceSearchRequested{});
     }
-    
-    State* onBackButton() override {
-        // Go back to Bluetooth menu
-        return getState(StateId::BLUETOOTH_MENU);
+
+    void onEvent(const BackButtonPressed&) override {
+        bus.publish(BackNavigationRequested{});
     }
 };

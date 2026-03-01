@@ -1,37 +1,53 @@
 #pragma once
 
-#include "State.hpp"
+#include "../states/State.hpp"
+#include "../view/View.hpp"
 #include "state_id/StateId.hpp"
-#include "screen_manager/ScreenManager.hpp"
-#include "button_manager/ButtonManager.hpp"
 #include <unordered_map>
+#include <vector>
 #include <memory>
 
 class StateMachine {
 public:
-    StateMachine(ScreenManager& _screenManager);
+    StateMachine();
     ~StateMachine() = default;
-    
-    // State registration (called during initialization)
+
+    // View ownership (set before registerState; views must outlive states)
+    void setViews(std::unique_ptr<MenuView> menuView,
+                  std::unique_ptr<LoadingView> loadingView,
+                  std::unique_ptr<PlayerView> playerView);
+
+    MenuView* getMenuView() { return menuView.get(); }
+    LoadingView* getLoadingView() { return loadingView.get(); }
+    PlayerView* getPlayerView() { return playerView.get(); }
+
+    // State registration (called during initialisation)
     void registerState(StateId id, std::unique_ptr<State> state);
-    
-    // State access (for states to get other states)
+
+    // State access
     State* getState(StateId id);
-    
+    State* getCurrentState() { return currentState; }
+
     // Transition management
     void transitionTo(StateId id);
-    
-    // Event handlers
-    void onUpButton();
-    void onDownButton();
-    void onSelectButton();
-    void onBackButton();
+    void goBack();
+
+    // Forward any event to the current state's onEvent handler
+    template<typename Event>
+    void onEvent(const Event& event) {
+        if (currentState) {
+            currentState->onEvent(event);
+        }
+    }
 
 private:
-    ScreenManager& screenManager;
+    std::unique_ptr<MenuView> menuView;
+    std::unique_ptr<LoadingView> loadingView;
+    std::unique_ptr<PlayerView> playerView;
     std::unordered_map<StateId, std::unique_ptr<State>> stateRegistry;
     State* currentState;
     StateId currentStateId;
-    
+    std::vector<StateId> history;
+
     void performTransition(State* newState);
 };

@@ -1,22 +1,16 @@
 #include "SavedDevicesMenu.hpp"
+#include "../../../event/Event.hpp"
+#include "../../../../storage/DeviceStorage.hpp"
 
-void SavedDevices::loadSavedDevices() {
-    // Load devices from storage
-    auto devices = DeviceStorage::loadDevices();
-    
-    // Add each device to the menu
+void SavedDevicesMenu::loadSavedDevices() {
+    auto devices = DeviceStorage::load(DeviceStorage::SAVED_DEVICES_FILE);
+    int index = 0;
     for (const auto& device : devices) {
-        // Store device address for later use
-        std::string deviceAddress = device.address;
-        
-        // Add menu option that transitions to connecting state
-        // The connecting state will use the device address
-        menu.addOption(StateId::CONNECTING, [this, deviceAddress]() {
-            // TODO: Set the target device address for connection
-            // This could be stored in StateMachine or a shared context
-            // For now, transition to connecting state
-            return getState(StateId::CONNECTING);
-        });
+        auto option = static_cast<MenuOption>(
+            static_cast<int>(MenuOption::DynamicStartDevices) + index);
+        std::string address = DeviceStorage::findAddressByName(
+            device.name, DeviceStorage::SAVED_DEVICES_FILE);
+        items.push_back({ option, [address](EventBus& b){ b.publish(BluetoothConnectionRequested{ address }); }, device.name });
+        ++index;
     }
 }
-// check this over (AI generated)

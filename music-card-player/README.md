@@ -1,20 +1,43 @@
-# Bluetooth Audio Connection for Raspberry Pi Zero 2 W
+# Music Card Player
 
-Basic C++ boilerplate for connecting to Bluetooth headphones and playing audio using BlueZ D-Bus API and SDL2.
+A C++ application for Raspberry Pi that plays music via Bluetooth headphones, controlled through physical push buttons and an SSD1106 128×64 I2C OLED display.
 
-## How Wireless Audio Works
+## How It Works
 
 ```
-┌─────────────┐      ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│  Your App   │ ──▶  │ PulseAudio  │ ──▶  │   BlueZ      │ ──▶  │ Headphones  │
-│ (SDL2/ALSA) │      │  (Router)   │      │ (Bluetooth)  │      │   (A2DP)    │
-└─────────────┘      └─────────────┘      └──────────────┘      └─────────────┘
+┌────────────┐     ┌──────────┐     ┌────────────┐     ┌─────────────┐
+│  Buttons   │ ──▶ │ EventBus │ ──▶ │   State    │ ──▶ │   OLED      │
+│  (GPIO)    │     │          │     │  Machine   │     │  Display    │
+└────────────┘     └──────────┘     └────────────┘     └─────────────┘
+                        │
+              ┌─────────┼─────────┐
+              ▼         ▼         ▼
+        ┌──────────┐ ┌───────┐ ┌──────────────┐
+        │ Bluetooth│ │ Audio │ │  Navigation  │
+        │ Manager  │ │Manager│ │   Handler    │
+        └──────────┘ └───────┘ └──────────────┘
 ```
 
-1. **Your app** plays audio using SDL2 (or any audio library)
-2. **PulseAudio** receives the audio and routes it to the active output
-3. **BlueZ** transmits audio wirelessly via A2DP profile
-4. **Headphones** receive and play the audio
+1. **Buttons** detect presses via GPIO and publish events to the EventBus
+2. **NavigationHandler** forwards button events to the current state and handles screen transitions
+3. **AudioHandler** responds to play/pause/volume events via SDL2 + PulseAudio
+4. **BluetoothHandler** manages device discovery, pairing, and connection via BlueZ D-Bus
+5. **Renderer** draws the current view (menus, player, loading screens) to the OLED display
+
+## Supported Hardware
+
+| Board | SoC | Architecture | Status |
+|---|---|---|---|
+| Raspberry Pi 5 | BCM2712 | aarch64 (Cortex-A76) | Primary target |
+| Raspberry Pi Zero 2 W | BCM2710A1 | aarch64 (Cortex-A53) | Supported |
+
+Both boards share the same aarch64 instruction set. The default Makefile targets the Pi 5; see [Building](#building) for Pi Zero 2 W instructions.
+
+### Peripherals
+
+- **Display**: SSD1106 128×64 I2C OLED (address `0x3C` on `/dev/i2c-1`)
+- **Buttons**: 4× momentary push buttons, each connecting a GPIO pin to GND when pressed
+- **Audio**: Bluetooth headphones/speakers via A2DP (BlueZ + PulseAudio)
 
 ## Prerequisites
 
@@ -23,143 +46,186 @@ Install required packages on your Raspberry Pi:
 ```bash
 sudo apt update
 sudo apt install -y \
+    build-essential \
     bluez bluez-tools \
     pulseaudio pulseaudio-module-bluetooth \
     libglib2.0-dev \
-    libsdl2-dev libsdl2-mixer-dev
+    libsdl2-dev libsdl2-mixer-dev \
+    libgpiod-dev \
+    i2c-tools
 ```
+
+Enable I2C if you haven't already:
+
+```bash
+sudo raspi-config nonint do_i2c 0
+```
+
+Verify the OLED display is detected:
+
+```bash
+i2cdetect -y 1
+# Should show 0x3C in the grid
+```
+
+## Deploying from Windows
+
+From PowerShell on your development machine:
+
+```powershell
+.\deploy.ps1 user@your-pi-hostname.local
+```
+
+This copies the entire project to `~/music-card-player` on the Pi via `scp`.
 
 ## Building
 
-```bash
-cd bluetooth
-make
-```
-
-Or compile directly:
+SSH into your Pi, then:
 
 ```bash
-g++ -o bluetooth_audio bluetooth_audio.cpp $(pkg-config --cflags --libs gio-2.0)
+cd ~/music-card-player
 ```
 
-## Usage
-
-### Interactive Mode
+### Raspberry Pi 5 (default)
 
 ```bash
-./bluetooth_audio
+make -j4
 ```
 
-This will:
-1. Power on the Bluetooth adapter
-2. Scan for devices for 10 seconds
-3. List discovered devices
-4. Prompt you to select a device to connect
+The default Makefile uses `-march=armv8.2-a+crypto -mtune=cortex-a76` which is optimal for the Pi 5.
 
-### Direct Connection
+### Raspberry Pi Zero 2 W
 
-If you know your headphones' MAC address:
+Override the architecture flags for the Cortex-A53:
 
 ```bash
-./bluetooth_audio AA:BB:CC:DD:EE:FF
+make -j4 CXXFLAGS="-Wall -Wextra -std=c++17 -O2 -march=armv8-a+crc -mtune=cortex-a53"
 ```
 
-## Playing Audio to Bluetooth Headphones
-
-### Using the Audio Player
+### Clean rebuild
 
 ```bash
-# Build the audio player
-make audio_player
-
-# Play an MP3 file (will output to connected Bluetooth headphones)
-./audio_player /path/to/song.mp3
+make clean
+make -j4
 ```
 
-Controls while playing:
-- `p` - Pause/Resume
-- `+` / `-` - Volume up/down
-- `q` - Quit
-
-### Quick Test with Command Line
+## Running
 
 ```bash
-# Test with a WAV file
-aplay -D bluealsa test.wav
-
-# Play MP3 with mpg123
-mpg123 song.mp3
-
-# Play any format with ffplay
-ffplay -nodisp -autoexit song.mp3
+./music-card-player
 ```
 
-## Setting Up Audio
+The application starts in the main menu. Use the four physical buttons (up, down, select, back) to navigate.
 
-After connecting, you may need to configure PulseAudio to use the Bluetooth device:
+## Project Structure
+
+```
+src/
+├── main.cpp                          # Entry point
+├── app_controller/                   # Top-level wiring (EventBus, managers, handlers)
+├── audio/                            # AudioManager (SDL2_mixer)
+├── bluetooth/                        # BluetoothManager (BlueZ D-Bus), BluetoothDevice
+├── storage/                          # DeviceStorage (flat-file persistence)
+├── handlers/                         # Event handlers
+│   ├── NavigationHandler             #   Button + navigation events → StateMachine
+│   ├── AudioHandler                  #   Play/pause/volume events → AudioManager
+│   └── BluetoothHandler              #   Search/connect events → BluetoothManager
+├── utils/                            # Constants (screen dimensions, font size)
+└── ui/
+    ├── event/                        # Event structs and EventBus (pub/sub)
+    ├── screen/                       # Screen (SSD1106 I2C driver)
+    ├── view/                         # View structs, Renderer, Font
+    ├── button/                       # Button (GPIO debounce), ButtonListener
+    ├── state_machine/                # StateMachine, StateBuilder, StateId
+    └── states/                       # State base class + concrete states
+        ├── main_menu/
+        ├── player/
+        ├── roles/menu_state/         # MenuState base (scrollable menus)
+        └── bluetooth/                # Bluetooth sub-states
+            ├── saved_devices/
+            ├── connect_new/
+            │   ├── found_devices/
+            │   └── searching_for_devices/
+            └── bluetooth_connecting/
+```
+
+## Wireless Audio Setup
+
+```
+┌─────────────┐      ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
+│  Your App   │ ──▶  │ PulseAudio  │ ──▶  │   BlueZ      │ ──▶  │ Headphones  │
+│ (SDL2/ALSA) │      │  (Router)   │      │ (Bluetooth)  │      │   (A2DP)    │
+└─────────────┘      └─────────────┘      └──────────────┘      └─────────────┘
+```
+
+After connecting via the on-screen Bluetooth menu, you may need to configure PulseAudio:
 
 ```bash
 # List audio sinks
 pactl list sinks short
 
-# Set Bluetooth as default sink
+# Set Bluetooth as default output
 pactl set-default-sink bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink
 ```
 
-## Auto-Connect on Boot
+## Auto-Start on Boot
 
-Create a systemd service for automatic connection:
+Create a systemd service:
 
 ```bash
-sudo nano /etc/systemd/system/bluetooth-headphones.service
-```
-
-```ini
+sudo tee /etc/systemd/system/music-card-player.service > /dev/null <<'EOF'
 [Unit]
-Description=Connect Bluetooth Headphones
-After=bluetooth.target
+Description=Music Card Player
+After=bluetooth.target graphical.target
 
 [Service]
-Type=oneshot
-ExecStart=/usr/local/bin/bluetooth_audio AA:BB:CC:DD:EE:FF
-RemainAfterExit=yes
+Type=simple
+User=pi
+ExecStart=/home/pi/music-card-player/music-card-player
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-```
+EOF
 
-Enable the service:
-
-```bash
-sudo systemctl enable bluetooth-headphones.service
+sudo systemctl enable --now music-card-player.service
 ```
 
 ## Troubleshooting
 
 ### Bluetooth adapter not found
+
 ```bash
-# Check if Bluetooth is blocked
 rfkill list
 sudo rfkill unblock bluetooth
-
-# Restart Bluetooth service
 sudo systemctl restart bluetooth
 ```
 
 ### No audio after connection
+
 ```bash
-# Restart PulseAudio
 pulseaudio -k
 pulseaudio --start
-
-# Check Bluetooth audio profile
 pactl list cards
 ```
 
 ### Permission denied
+
 ```bash
-# Add user to bluetooth group
-sudo usermod -a -G bluetooth $USER
-# Then log out and back in
+sudo usermod -a -G bluetooth,gpio,i2c $USER
+# Log out and back in
 ```
 
+### OLED display not responding
+
+```bash
+# Check I2C bus
+i2cdetect -y 1
+
+# Should show 0x3C. If not, check wiring and that I2C is enabled.
+```
+
+### GPIO buttons not working (Pi 5)
+
+The Pi 5 uses a different GPIO chip (`/dev/gpiochip4`) than earlier models (`/dev/gpiochip0`). If buttons aren't detected, check that `ButtonListener.cpp` references the correct chip for your board.

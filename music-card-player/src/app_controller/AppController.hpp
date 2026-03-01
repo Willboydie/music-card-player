@@ -1,13 +1,17 @@
 #pragma once
+#include "../utils/constants.h"
 
-#include "state_machine/StateMachine.hpp"
-#include "state_builder/StateBuilder.hpp"
-#include "button_manager/ButtonManager.hpp"
-#include "screen_manager/ScreenManager.hpp"
+// Top-level application controller.
+//
+// Owns and wires together every subsystem:
+//   EventBus  ←→  ButtonListener, Screen, StateMachine,
+//                  AudioManager, BluetoothManager,
+//                  NavigationHandler, AudioHandler, BluetoothHandler
 
 class AppController {
 public:
-    AppController() {}
+    AppController() = default;
     ~AppController() = default;
+
     void run();
 };

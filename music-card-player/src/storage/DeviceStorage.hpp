@@ -1,106 +1,42 @@
 #pragma once
 
+#include "../bluetooth/BluetoothDevice.hpp"
 #include <vector>
 #include <string>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
 
-struct SavedDevice {
-    std::string name;
-    std::string address;  // MAC address
-    
-    SavedDevice(const std::string& _name, const std::string& _address)
-        : name(_name), address(_address) {}
-};
+// Flat-file persistence for BluetoothDevice lists.
+//
+// Two predefined files:
+//   SAVED_DEVICES_FILE  – devices the user has paired with (persistent)
+//   FOUND_DEVICES_FILE  – devices discovered during the most recent scan (transient)
+//
+// File format (one device per line):
+//   name|AA:BB:CC:DD:EE:FF
+//
+// Lines starting with '#' are comments and are skipped on load.
 
 class DeviceStorage {
 public:
-    static constexpr const char* DEFAULT_FILE = "saved_devices.txt";
-    
-    // Load saved devices from file
-    static std::vector<SavedDevice> loadDevices(const std::string& filename = DEFAULT_FILE) {
-        std::vector<SavedDevice> devices;
-        std::ifstream file(filename);
-        
-        if (!file.is_open()) {
-            // File doesn't exist yet, return empty list
-            return devices;
-        }
-        
-        std::string line;
-        while (std::getline(file, line)) {
-            if (line.empty() || line[0] == '#') {
-                continue;  // Skip empty lines and comments
-            }
-            
-            // Format: "Device Name:AA:BB:CC:DD:EE:FF"
-            size_t colon_pos = line.find(':');
-            if (colon_pos != std::string::npos) {
-                std::string name = line.substr(0, colon_pos);
-                std::string address = line.substr(colon_pos + 1);
-                
-                // Trim whitespace
-                name.erase(0, name.find_first_not_of(" \t"));
-                name.erase(name.find_last_not_of(" \t") + 1);
-                address.erase(0, address.find_first_not_of(" \t"));
-                address.erase(address.find_last_not_of(" \t") + 1);
-                
-                if (!name.empty() && !address.empty()) {
-                    devices.emplace_back(name, address);
-                }
-            }
-        }
-        
-        return devices;
-    }
-    
-    // Save devices to file
-    static bool saveDevices(const std::vector<SavedDevice>& devices, 
-                            const std::string& filename = DEFAULT_FILE) {
-        std::ofstream file(filename);
-        
-        if (!file.is_open()) {
-            return false;
-        }
-        
-        file << "# Saved Bluetooth Devices\n";
-        file << "# Format: Device Name:MAC:Address\n";
-        
-        for (const auto& device : devices) {
-            file << device.name << ":" << device.address << "\n";
-        }
-        
-        return true;
-    }
-    
-    // Add a device (loads, adds, saves)
-    static bool addDevice(const std::string& name, const std::string& address,
-                         const std::string& filename = DEFAULT_FILE) {
-        auto devices = loadDevices(filename);
-        
-        // Check if device already exists
-        for (const auto& device : devices) {
-            if (device.address == address) {
-                return false;  // Device already exists
-            }
-        }
-        
-        devices.emplace_back(name, address);
-        return saveDevices(devices, filename);
-    }
-    
-    // Remove a device by address
+    static constexpr const char* SAVED_DEVICES_FILE = "saved_devices.txt";
+    static constexpr const char* FOUND_DEVICES_FILE = "found_devices.txt";
+
+    // ── Bulk I/O ─────────────────────────────────────────────────
+    static std::vector<BluetoothDevice> load(const std::string& filepath);
+    static bool save(const std::vector<BluetoothDevice>& devices,
+                     const std::string& filepath);
+
+    // ── Lookup ────────────────────────────────────────────────────
+    // Returns the MAC address for the first device whose name matches,
+    // or an empty string if not found.
+    static std::string findAddressByName(const std::string& name,
+                                         const std::string& filepath);
+
+    // ── Convenience helpers (load → modify → save) ──────────────
+    // Adds a device if its address is not already present.
+    static bool addDevice(const BluetoothDevice& device,
+                          const std::string& filepath);
+
+    // Removes every device whose address matches.
     static bool removeDevice(const std::string& address,
-                            const std::string& filename = DEFAULT_FILE) {
-        auto devices = loadDevices(filename);
-        
-        devices.erase(
-            std::remove_if(devices.begin(), devices.end(),
-                [&address](const SavedDevice& d) { return d.address == address; }),
-            devices.end()
-        );
-        
-        return saveDevices(devices, filename);
-    }
+                             const std::string& filepath);
 };
