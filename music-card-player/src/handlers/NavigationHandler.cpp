@@ -22,8 +22,12 @@ NavigationHandler::NavigationHandler(EventBus& bus, StateMachine& stateMachine)
     });
 
     // ── Navigation requests → state transitions ──────────────────
-    bus.subscribe<BackNavigationRequested>([&](const BackNavigationRequested&) {
-        sm.goBack();
+    // bus.subscribe<BackNavigationRequested>([&](const BackNavigationRequested&) {
+    //     sm.goBack();
+    // });
+    
+    bus.subscribe<OpenMainMenuStateRequested>([&](const OpenMainMenuStateRequested&) {
+        sm.transitionTo(StateId::MAIN_MENU);
     });
 
     bus.subscribe<OpenPlayerStateRequested>([&](const OpenPlayerStateRequested&) {
@@ -65,5 +69,9 @@ NavigationHandler::NavigationHandler(EventBus& bus, StateMachine& stateMachine)
 
     bus.subscribe<BluetoothConnectionFailed>([&](const BluetoothConnectionFailed&) {
         sm.transitionTo(StateId::BLUETOOTH_MENU);
+    });
+
+    bus.subscribe<BluetoothConnectionRequested>([&](const BluetoothConnectionRequested&) {
+        sm.transitionTo(StateId::CONNECTING);
     });
 }

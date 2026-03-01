@@ -18,6 +18,7 @@ public:
         selectedIndex = 0;
         syncView();
         ensureValidSelection();
+        Debugger::debug_msg("MenuState: Selected Option: " + items[selectedIndex].label);
         State::onEntry();
     }
 
@@ -25,7 +26,6 @@ public:
     void onEvent(const UpButtonPressed&) override { moveSelection(-1); }
     void onEvent(const DownButtonPressed&) override { moveSelection(1); }
     void onEvent(const SelectButtonPressed&) override { onSelectCurrentItem(); }
-    void onEvent(const BackButtonPressed&) override { bus.publish(BackNavigationRequested{}); }
 
 protected:
     MenuView& view;
@@ -37,10 +37,12 @@ protected:
         const MenuItem& item = items[selectedIndex];
         if (!item.enabled) return;
         if (item.onSelect) item.onSelect(bus);
+        Debugger::debug_msg("MenuState: clicked option: " + item.label);
     }
 
     // Copies items → view.items and syncs selectedIndex
     void syncView();
     void moveSelection(int delta);
     void ensureValidSelection();
+
 };

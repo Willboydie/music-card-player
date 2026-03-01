@@ -17,5 +17,6 @@ public:
     }
 
     // Main menu has no back
+    using MenuState::onEvent;
     void onEvent(const BackButtonPressed&) override { }
 };

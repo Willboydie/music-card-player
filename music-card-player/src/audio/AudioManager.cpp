@@ -1,12 +1,14 @@
 #include "AudioManager.hpp"
+#include "../ui/event/Event.hpp"
 #include <algorithm>
 #include <iostream>
 
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-AudioManager::AudioManager()
-    : initialised(false)
+AudioManager::AudioManager(EventBus& bus)
+    : eventBus_(bus)
+    , initialised(false)
     , currentTrack(nullptr)
     , volume(1.0f)
 {}
@@ -16,6 +18,7 @@ AudioManager::~AudioManager() {
 }
 
 bool AudioManager::initialise() {
+    Debugger::debug_msg("AudioManager: initialising");
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         std::cerr << "AudioManager: SDL init failed: "
                   << SDL_GetError() << std::endl;
@@ -37,11 +40,13 @@ bool AudioManager::initialise() {
     }
 
     initialised = true;
+    Debugger::debug_msg("AudioManager: initialised");
     return true;
 }
 
 void AudioManager::shutdown() {
     if (!initialised) return;
+    Debugger::debug_msg("AudioManager: shutting down");
 
     stop();
     Mix_CloseAudio();
@@ -55,7 +60,7 @@ void AudioManager::shutdown() {
 
 bool AudioManager::play(const std::string& filepath) {
     if (!initialised) return false;
-
+    Debugger::debug_msg("AudioManager: playing " + filepath);
     stop();
 
     currentTrack = Mix_LoadMUS(filepath.c_str());
@@ -77,12 +82,14 @@ bool AudioManager::play(const std::string& filepath) {
 void AudioManager::pause() {
     if (isPlaying()) {
         Mix_PauseMusic();
+        Debugger::debug_msg("AudioManager: paused");
     }
 }
 
 void AudioManager::resume() {
     if (isPaused()) {
         Mix_ResumeMusic();
+        Debugger::debug_msg("AudioManager: resumed");
     }
 }
 
@@ -92,6 +99,7 @@ void AudioManager::stop() {
         Mix_FreeMusic(currentTrack);
         currentTrack = nullptr;
     }
+    Debugger::debug_msg("AudioManager: stopped");
 }
 
 
@@ -100,6 +108,7 @@ void AudioManager::stop() {
 void AudioManager::setVolume(float level) {
     volume = std::clamp(level, 0.0f, 1.0f);
     Mix_VolumeMusic(toSdlVolume(volume));
+    Debugger::debug_msg("AudioManager: set volume to " + std::to_string(volume));
 }
 
 float AudioManager::getVolume() const {

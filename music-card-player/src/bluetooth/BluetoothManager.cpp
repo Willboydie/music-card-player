@@ -1,13 +1,15 @@
 #include "BluetoothManager.hpp"
 #include "../storage/DeviceStorage.hpp"
+#include "../ui/event/Event.hpp"
 #include <cstring>
 #include <iostream>
 
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-BluetoothManager::BluetoothManager()
-    : dbus(nullptr)
+BluetoothManager::BluetoothManager(EventBus& bus)
+    : eventBus_(bus)
+    , dbus(nullptr)
     , adapterPath("/org/bluez/hci0")
 {}
 
@@ -16,6 +18,7 @@ BluetoothManager::~BluetoothManager() {
 }
 
 bool BluetoothManager::initialise() {
+    Debugger::debug_msg("BluetoothManager: initialising");
     GError* error = nullptr;
     dbus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, &error);
     if (error) {
@@ -24,10 +27,12 @@ bool BluetoothManager::initialise() {
         g_error_free(error);
         return false;
     }
+    Debugger::debug_msg("BluetoothManager: initialised");
     return true;
 }
 
 void BluetoothManager::shutdown() {
+    Debugger::debug_msg("BluetoothManager: shutting down");
     if (dbus) {
         g_object_unref(dbus);
         dbus = nullptr;
@@ -38,6 +43,7 @@ void BluetoothManager::shutdown() {
 // ── Adapter ──────────────────────────────────────────────────────────────────
 
 bool BluetoothManager::powerOn() {
+    Debugger::debug_msg("BluetoothManager: powering on");
     return setProperty(adapterPath, "org.bluez.Adapter1",
                        "Powered", g_variant_new_boolean(TRUE));
 }
@@ -46,14 +52,17 @@ bool BluetoothManager::powerOn() {
 // ── Discovery ────────────────────────────────────────────────────────────────
 
 bool BluetoothManager::startDiscovery() {
+    Debugger::debug_msg("BluetoothManager: starting discovery");
     return callMethod(adapterPath, "org.bluez.Adapter1", "StartDiscovery");
 }
 
 bool BluetoothManager::stopDiscovery() {
+    Debugger::debug_msg("BluetoothManager: stopping discovery");
     return callMethod(adapterPath, "org.bluez.Adapter1", "StopDiscovery");
 }
 
 std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
+    Debugger::debug_msg("BluetoothManager: getting discovered devices");
     std::vector<BluetoothDevice> devices;
     GError* error = nullptr;
 
@@ -101,13 +110,20 @@ std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
 
     g_variant_iter_free(iter);
     g_variant_unref(result);
+    Debugger::debug_msg("BluetoothManager: got " + std::to_string(devices.size()) + " discovered devices");
     return devices;
 }
 
 std::vector<BluetoothDevice> BluetoothManager::completeDiscovery() {
+    Debugger::debug_msg("BluetoothManager: completing discovery");
     stopDiscovery();
     auto devices = getDiscoveredDevices();
     DeviceStorage::save(devices, DeviceStorage::FOUND_DEVICES_FILE);
+    for (const auto& device : devices) {
+        eventBus_.publish(BluetoothDeviceDiscovered{device.name + " " + device.address});
+    }
+    eventBus_.publish(BluetoothDeviceSearchComplete{});
+    Debugger::debug_msg("BluetoothManager: completed discovery");
     return devices;
 }
 
@@ -115,6 +131,7 @@ std::vector<BluetoothDevice> BluetoothManager::completeDiscovery() {
 // ── Device management ────────────────────────────────────────────────────────
 
 bool BluetoothManager::pair(const std::string& mac) {
+    Debugger::debug_msg("BluetoothManager: pairing " + mac);
     GError* error = nullptr;
     GVariant* result = g_dbus_connection_call_sync(
         dbus, "org.bluez", devicePath(mac).c_str(),
@@ -135,27 +152,39 @@ bool BluetoothManager::pair(const std::string& mac) {
     }
 
     if (result) g_variant_unref(result);
+    Debugger::debug_msg("BluetoothManager: paired " + mac);
     return true;
 }
 
 bool BluetoothManager::pairAndSave(const BluetoothDevice& device) {
+    Debugger::debug_msg("BluetoothManager: pairing and saving " + device.address);
     if (!pair(device.address)) return false;
     if (!trust(device.address)) return false;
     DeviceStorage::addDevice(device, DeviceStorage::SAVED_DEVICES_FILE);
+    Debugger::debug_msg("BluetoothManager: paired and saved " + device.address);
     return true;
 }
 
 bool BluetoothManager::trust(const std::string& mac) {
+    Debugger::debug_msg("BluetoothManager: trusting " + mac);
     return setProperty(devicePath(mac), "org.bluez.Device1",
                        "Trusted", g_variant_new_boolean(TRUE));
 }
 
 bool BluetoothManager::connect(const std::string& mac) {
-    return callMethod(devicePath(mac), "org.bluez.Device1",
-                      "Connect", nullptr, 30000);
+    Debugger::debug_msg("BluetoothManager: connecting " + mac);
+    bool ok = callMethod(devicePath(mac), "org.bluez.Device1",
+                         "Connect", nullptr, 30000);
+    if (ok) {
+        eventBus_.publish(BluetoothConnected{});
+    } else {
+        eventBus_.publish(BluetoothConnectionFailed{});
+    }
+    return ok;
 }
 
 bool BluetoothManager::disconnect(const std::string& mac) {
+    Debugger::debug_msg("BluetoothManager: disconnecting " + mac);
     return callMethod(devicePath(mac), "org.bluez.Device1", "Disconnect");
 }
 

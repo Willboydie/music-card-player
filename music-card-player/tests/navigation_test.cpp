@@ -1,17 +1,17 @@
-#include "AppController.hpp"
+#include "../src/utils/constants.h"
 
-#include "../ui/event/EventBus.hpp"
-#include "../ui/button/ButtonListener.hpp"
-#include "../ui/screen/Screen.hpp"
-#include "../ui/view/Renderer.hpp"
-#include "../ui/state_machine/StateMachine.hpp"
-#include "../ui/state_machine/StateBuilder.hpp"
-#include "../audio/AudioManager.hpp"
-#include "../bluetooth/BluetoothManager.hpp"
-#include "../handlers/NavigationHandler.hpp"
-#include "../handlers/AudioHandler.hpp"
-#include "../handlers/BluetoothHandler.hpp"
-#include "../debugger/Debugger.hpp"
+#include "../src/ui/event/EventBus.hpp"
+#include "../src/ui/button/ButtonListener.hpp"
+#include "../src/ui/screen/Screen.hpp"
+#include "../src/ui/view/Renderer.hpp"
+#include "../src/ui/state_machine/StateMachine.hpp"
+#include "../src/ui/state_machine/StateBuilder.hpp"
+#include "../src/audio/MockAudioManager.hpp"
+#include "../src/bluetooth/MockBluetoothManager.hpp"
+#include "../src/handlers/NavigationHandler.hpp"
+#include "../src/handlers/AudioHandler.hpp"
+#include "../src/handlers/BluetoothHandler.hpp"
+#include "../src/debugger/Debugger.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -29,8 +29,10 @@ static constexpr int sda_pin = SDA_PIN;
 static constexpr int scl_pin = SCL_PIN;
 
 
-void AppController::run() {
+static void navigation_test() {
     // auto start_time = std::chrono::steady_clock::now();
+
+    Debugger::debugMode = true;
 
     // ── Core infrastructure ──────────────────────────────────────
     EventBus bus;
@@ -40,10 +42,10 @@ void AppController::run() {
     Renderer renderer(screen);
 
     // ── Managers ─────────────────────────────────────────────────
-    AudioManager audio(bus);
+    MockAudioManager audio(bus);
     audio.initialise();
 
-    BluetoothManager bluetooth(bus);
+    MockBluetoothManager bluetooth(bus);
     bluetooth.initialise();
     bluetooth.powerOn();
 
@@ -54,7 +56,7 @@ void AppController::run() {
     ButtonListener buttons(bus, up_pin, down_pin, select_pin, back_pin);
     buttons.init();
 
-    // ── Event handlers (subscribe to EventBus, delegate to managers)
+    // ── Event handlers ─────────────────────────────────────────
     NavigationHandler navigationHandler(bus, *stateMachine);
     AudioHandler      audioHandler(bus, audio);
     BluetoothHandler  bluetoothHandler(bus, bluetooth);
@@ -66,17 +68,14 @@ void AppController::run() {
         
         // if (std::chrono::steady_clock::now() - start_time > std::chrono::seconds(1)) {
         //     if (std::cin.get() == 'q') {
-        //         std::cout << "AppController: Exiting..." << std::endl;
+        //         std::cout << "Navigation test: Exiting..." << std::endl;
         //         break;
         //     }
-        //     if (std::cin.get() == 'D') {
-        //         Debugger::debugMode = true;
-        //         std::cout << "Debug mode enabled" << std::endl;
-        //     } else if (std::cin.get() == 'D') {
-        //         Debugger::debugMode = false;
-        //         std::cout << "Debug mode disabled" << std::endl;
-        //     }
-        //     start_time = std::chrono::steady_clock::now();
         // }
     }
+}
+
+int main() {
+    navigation_test();
+    return 0;
 }

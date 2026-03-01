@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 #include <memory>
+#include <iostream>
+#include "../../debugger/Debugger.hpp"
 
 class StateMachine {
 public:
@@ -30,7 +32,7 @@ public:
 
     // Transition management
     void transitionTo(StateId id);
-    void goBack();
+    // void goBack();
 
     // Forward any event to the current state's onEvent handler
     template<typename Event>
@@ -47,7 +49,7 @@ private:
     std::unordered_map<StateId, std::unique_ptr<State>> stateRegistry;
     State* currentState;
     StateId currentStateId;
-    std::vector<StateId> history;
+    // std::vector<StateId> history;
 
     void performTransition(State* newState);
 };

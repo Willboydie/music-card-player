@@ -34,7 +34,7 @@ public:
     }
 
     void onEvent(const BackButtonPressed&) override {
-        bus.publish(BackNavigationRequested{});
+        bus.publish(OpenMainMenuStateRequested{});
     }
 
 private:

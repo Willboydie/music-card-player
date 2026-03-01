@@ -15,4 +15,9 @@ public:
             { MenuOption::DynamicStartBluetooth, [](EventBus& b){ b.publish(OpenConnectNewMenuRequested{}); }, "Connect New" }
         };
     }
+
+    using MenuState::onEvent;
+    void onEvent(const BackButtonPressed&) override {
+        bus.publish(OpenMainMenuStateRequested{});
+    }
 };

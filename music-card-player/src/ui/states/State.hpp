@@ -5,6 +5,7 @@
 #include "../event/Event.hpp"
 #include "../view/Renderer.hpp"
 #include "../view/View.hpp"
+#include "../../debugger/Debugger.hpp"
 
 
 class State {
@@ -22,8 +23,13 @@ public:
 
     // Default onEntry renders the view. Override and call State::onEntry()
     // at the end to keep the render, or call renderer.render(view) yourself.
-    virtual void onEntry() { renderer.render(view); }
-    virtual void onExit() {}
+    virtual void onEntry() { 
+        renderer.render(view); 
+        Debugger::debug_msg("Entered state: " + name);
+    }
+    virtual void onExit() {
+        Debugger::debug_msg("Exited state: " + name);
+    }
 
     // Physical event handlers
     // These decide on the intention of the user (if any) and emit that event

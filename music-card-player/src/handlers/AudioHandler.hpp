@@ -2,16 +2,13 @@
 
 #include "../ui/event/EventBus.hpp"
 #include "../ui/event/Event.hpp"
-#include "../audio/AudioManager.hpp"
-
-// Subscribes to audio-related events on the EventBus and
-// dispatches them to the AudioManager.
+#include "../audio/IAudioManager.hpp"
 
 class AudioHandler {
 public:
-    AudioHandler(EventBus& bus, AudioManager& audioManager);
+    AudioHandler(EventBus& bus, IAudioManager& audioManager);
 
 private:
     EventBus& bus;
-    AudioManager& audio;
+    IAudioManager& audio;
 };

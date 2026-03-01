@@ -12,5 +12,6 @@ public:
 
     void onEvent(const BackButtonPressed&) override {
         bus.publish(BluetoothConnectionAbortRequested{});
+        bus.publish(OpenBluetoothMenuStateRequested{});
     }
 };

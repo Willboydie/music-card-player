@@ -27,6 +27,7 @@ SRCS = \
 	$(SRCDIR)/app_controller/AppController.cpp \
 	$(SRCDIR)/audio/AudioManager.cpp \
 	$(SRCDIR)/bluetooth/BluetoothManager.cpp \
+	$(SRCDIR)/debugger/Debugger.cpp \
 	$(SRCDIR)/storage/DeviceStorage.cpp \
 	$(SRCDIR)/handlers/NavigationHandler.cpp \
 	$(SRCDIR)/handlers/AudioHandler.cpp \
@@ -63,7 +64,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.cpp
 	$(CXX) $(ALL_CFLAGS) -MMD -MP -c -o $@ $<
 
 clean:
-	rm -rf $(BUILDDIR) $(TARGET) run_button_test run_state_machine_test
+	rm -rf $(BUILDDIR) $(TARGET) run_button_test run_state_machine_test run_navigation_test
 
 # ── Tests ─────────────────────────────────────────────────────────
 TEST_SRCDIR = tests
@@ -76,9 +77,9 @@ run_button_test: $(TEST_SRCDIR)/button_test.cpp $(TEST_OBJS)
 run_state_machine_test: $(TEST_SRCDIR)/state_machine_test.cpp $(TEST_OBJS)
 	$(CXX) $(ALL_CFLAGS) -I$(SRCDIR) -o $@ $< $(TEST_OBJS) $(ALL_LIBS)
 
-test: run_state_machine_test
-	./run_state_machine_test
+run_navigation_test: $(TEST_SRCDIR)/navigation_test.cpp $(TEST_OBJS)
+	$(CXX) $(ALL_CFLAGS) -I$(SRCDIR) -o $@ $< $(TEST_OBJS) $(ALL_LIBS)
 
 -include $(DEPS)
 
-.PHONY: all clean test
+.PHONY: all clean run_button_test run_state_machine_test run_navigation_test

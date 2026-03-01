@@ -1,6 +1,6 @@
 #include "AudioHandler.hpp"
 
-AudioHandler::AudioHandler(EventBus& bus, AudioManager& audioManager)
+AudioHandler::AudioHandler(EventBus& bus, IAudioManager& audioManager)
     : bus(bus)
     , audio(audioManager)
 {

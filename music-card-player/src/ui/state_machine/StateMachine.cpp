@@ -1,4 +1,5 @@
 #include "StateMachine.hpp"
+#include "../../debugger/Debugger.hpp"
 
 StateMachine::StateMachine()
     : currentState(nullptr)
@@ -27,26 +28,26 @@ void StateMachine::transitionTo(StateId id) {
     State* newState = getState(id);
     if (newState && newState != currentState) {
         // Push the current state onto the history stack before leaving
-        if (currentState) {
-            history.push_back(currentStateId);
-        }
+        // if (currentState) {
+        //     history.push_back(currentStateId);
+        // }
         performTransition(newState);
         currentStateId = id;
     }
 }
 
-void StateMachine::goBack() {
-    if (history.empty()) return;
+// void StateMachine::goBack() {
+//     if (history.empty()) return;
 
-    StateId previousId = history.back();
-    history.pop_back();
+//     StateId previousId = history.back();
+//     history.pop_back();
 
-    State* previousState = getState(previousId);
-    if (previousState) {
-        performTransition(previousState);
-        currentStateId = previousId;
-    }
-}
+//     State* previousState = getState(previousId);
+//     if (previousState) {
+//         performTransition(previousState);
+//         currentStateId = previousId;
+//     }
+// }
 
 void StateMachine::performTransition(State* newState) {
     if (currentState) {
@@ -57,6 +58,7 @@ void StateMachine::performTransition(State* newState) {
         currentState->onEntry();
     }
 }
+
 
 // Note: onEvent is now a template defined in StateMachine.hpp.
 // It forwards any event to the current state's onEvent handler.

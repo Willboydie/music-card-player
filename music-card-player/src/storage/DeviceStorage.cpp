@@ -4,7 +4,6 @@
 
 static constexpr char Delimiter = '|';
 
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 static std::string trim(const std::string& s) {
@@ -18,6 +17,7 @@ static std::string trim(const std::string& s) {
 // ── Bulk I/O ─────────────────────────────────────────────────────────────────
 
 std::vector<BluetoothDevice> DeviceStorage::load(const std::string& filepath) {
+    Debugger::debug_msg("DeviceStorage: loading " + filepath);
     std::vector<BluetoothDevice> devices;
     std::ifstream file(filepath);
     if (!file.is_open()) return devices;
@@ -37,11 +37,13 @@ std::vector<BluetoothDevice> DeviceStorage::load(const std::string& filepath) {
         }
     }
 
+    Debugger::debug_msg("DeviceStorage: loaded " + std::to_string(devices.size()) + " devices");
     return devices;
 }
 
 bool DeviceStorage::save(const std::vector<BluetoothDevice>& devices,
                           const std::string& filepath) {
+    Debugger::debug_msg("DeviceStorage: saving " + filepath);
     std::ofstream file(filepath);
     if (!file.is_open()) return false;
 
@@ -50,6 +52,7 @@ bool DeviceStorage::save(const std::vector<BluetoothDevice>& devices,
         file << d.name << Delimiter << d.address << '\n';
     }
 
+    Debugger::debug_msg("DeviceStorage: saved " + std::to_string(devices.size()) + " devices");
     return file.good();
 }
 
@@ -58,10 +61,12 @@ bool DeviceStorage::save(const std::vector<BluetoothDevice>& devices,
 
 std::string DeviceStorage::findAddressByName(const std::string& name,
                                               const std::string& filepath) {
+    Debugger::debug_msg("DeviceStorage: finding address by name " + name + " in " + filepath);
     auto devices = load(filepath);
     for (const auto& d : devices) {
         if (d.name == name) return d.address;
     }
+    Debugger::debug_msg("DeviceStorage: found address by name " + name + " in " + filepath);
     return {};
 }
 
@@ -70,6 +75,7 @@ std::string DeviceStorage::findAddressByName(const std::string& name,
 
 bool DeviceStorage::addDevice(const BluetoothDevice& device,
                                const std::string& filepath) {
+    Debugger::debug_msg("DeviceStorage: adding device " + device.address + " to " + filepath);
     auto devices = load(filepath);
 
     // Don't duplicate by address
@@ -78,11 +84,15 @@ bool DeviceStorage::addDevice(const BluetoothDevice& device,
     }
 
     devices.push_back(device);
-    return save(devices, filepath);
+    Debugger::debug_msg("DeviceStorage: added device " + device.address + " to " + filepath);
+    bool result = save(devices, filepath);
+    Debugger::debug_msg("DeviceStorage: saved " + std::to_string(devices.size()) + " devices: " + (result ? "success" : "failure"));
+    return result;
 }
 
 bool DeviceStorage::removeDevice(const std::string& address,
                                   const std::string& filepath) {
+    Debugger::debug_msg("DeviceStorage: removing device " + address + " from " + filepath);
     auto devices = load(filepath);
 
     devices.erase(
@@ -90,5 +100,8 @@ bool DeviceStorage::removeDevice(const std::string& address,
             [&address](const BluetoothDevice& d) { return d.address == address; }),
         devices.end());
 
-    return save(devices, filepath);
+    Debugger::debug_msg("DeviceStorage: removed device " + address + " from " + filepath);
+    bool result = save(devices, filepath);
+    Debugger::debug_msg("DeviceStorage: saved " + std::to_string(devices.size()) + " devices: " + (result ? "success" : "failure"));
+    return result;
 }

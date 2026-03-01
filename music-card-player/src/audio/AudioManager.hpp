@@ -1,50 +1,35 @@
 #pragma once
 
+#include "IAudioManager.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
 #include <string>
+#include "../debugger/Debugger.hpp"
+#include "../ui/event/EventBus.hpp"
 
-// Manages audio playback via SDL2_mixer.
-//
-// Typical usage:
-//     AudioManager audio;
-//     audio.initialise();
-//     audio.setVolume(0.8f);
-//     audio.play("/path/to/track.mp3");
-//     audio.pause();
-//     audio.resume();
-//     audio.stop();
-
-class AudioManager {
+class AudioManager : public IAudioManager {
 public:
-    AudioManager();
-    ~AudioManager();
+    explicit AudioManager(EventBus& bus);
+    ~AudioManager() override;
 
-    // Non-copyable
     AudioManager(const AudioManager&) = delete;
     AudioManager& operator=(const AudioManager&) = delete;
 
-    // ── Lifecycle ────────────────────────────────────────────────
-    bool initialise();
-    void shutdown();
-
-    // ── Playback ─────────────────────────────────────────────────
-    bool play(const std::string& filepath);
-    void pause();
-    void resume();
-    void stop();
-
-    // ── Volume (0.0 – 1.0) ──────────────────────────────────────
-    void  setVolume(float level);
-    float getVolume() const;
-
-    // ── Status ───────────────────────────────────────────────────
-    bool isPlaying() const;
-    bool isPaused() const;
+    bool initialise() override;
+    void shutdown() override;
+    bool play(const std::string& filepath) override;
+    void pause() override;
+    void resume() override;
+    void stop() override;
+    void  setVolume(float level) override;
+    float getVolume() const override;
+    bool isPlaying() const override;
+    bool isPaused() const override;
 
 private:
     static constexpr int MaxVolume = MIX_MAX_VOLUME;  // 128
 
+    EventBus& eventBus_;
     bool initialised;
     Mix_Music* currentTrack;
     float volume;

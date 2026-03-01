@@ -4,6 +4,8 @@
 #include "../event/EventBus.hpp"
 #include "../event/Event.hpp"
 #include <gpiod.h>
+#include "../../debugger/Debugger.hpp"
+
 
 // Polls four GPIO push-buttons each loop iteration and publishes
 // the corresponding Event to the EventBus on every debounced press.
@@ -30,8 +32,6 @@ public:
 
 private:
     EventBus& bus;
-    struct gpiod_chip* chip;
-
     Button upButton;
     Button downButton;
     Button selectButton;

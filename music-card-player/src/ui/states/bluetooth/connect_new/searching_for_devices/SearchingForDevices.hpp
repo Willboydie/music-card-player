@@ -12,6 +12,6 @@ public:
 
     void onEvent(const BackButtonPressed&) override {
         bus.publish(BluetoothDeviceSearchAbortRequested{});
-        bus.publish(BackNavigationRequested{});
+        bus.publish(OpenConnectNewMenuRequested{});
     }
 };

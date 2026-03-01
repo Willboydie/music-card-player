@@ -18,6 +18,11 @@ public:
         MenuState::onEntry();
     }
 
+    using MenuState::onEvent;
+    void onEvent(const BackButtonPressed&) override {
+        bus.publish(OpenBluetoothMenuStateRequested{});
+    }
+
 private:
     void loadSavedDevices();
 };

@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+#include <string>
+#include "../../debugger/Debugger.hpp"
 
 // Type-safe publish / subscribe event bus.
 //
@@ -24,6 +26,9 @@
 class EventBus {
 public:
     using SubscriptionId = std::size_t;
+
+    EventBus() = default;
+    ~EventBus() = default;
 
     // Register a callback for events of type T.
     // Returns an id that can be passed to unsubscribe().
@@ -45,6 +50,7 @@ public:
     // Deliver an event to every subscriber of that event type.
     template<typename T>
     void publish(const T& event) {
+        Debugger::debug_msg("EventBus: publishing " + std::string(typeid(T).name()));
         auto it = subscriptions.find(std::type_index(typeid(T)));
         if (it == subscriptions.end()) return;
 

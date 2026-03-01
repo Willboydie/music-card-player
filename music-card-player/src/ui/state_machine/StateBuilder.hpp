@@ -15,6 +15,5 @@
 // Forward declarations
 class EventBus;
 class Renderer;
-
 // Build and initialise the state machine with all registered states.
 std::unique_ptr<StateMachine> buildStateMachine(EventBus& bus, Renderer& renderer);

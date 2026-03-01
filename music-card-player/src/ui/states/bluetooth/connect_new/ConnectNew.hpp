@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../State.hpp"
+#include "../../../event/Event.hpp"
 
 class ConnectNew : public State {
 public:
@@ -12,9 +13,11 @@ public:
 
     void onEvent(const SelectButtonPressed&) override {
         bus.publish(BluetoothDeviceSearchRequested{});
+        bus.publish(OpenSearchingForDevicesMenuRequested{});
     }
 
     void onEvent(const BackButtonPressed&) override {
-        bus.publish(BackNavigationRequested{});
+        bus.publish(BluetoothConnectionAbortRequested{});
+        bus.publish(OpenBluetoothMenuStateRequested{});
     }
 };

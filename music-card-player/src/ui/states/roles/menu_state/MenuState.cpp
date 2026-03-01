@@ -17,6 +17,7 @@ void MenuState::moveSelection(int delta) {
         selectedIndex = (selectedIndex + delta + count) % count;
     } while (!items[selectedIndex].enabled);
 
+    Debugger::debug_msg("MenuState: moved selection to " + items[selectedIndex].label);
     view.selectedIndex = selectedIndex;
     renderer.render(view);
 }

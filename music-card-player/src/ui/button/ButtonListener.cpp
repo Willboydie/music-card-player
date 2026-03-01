@@ -1,14 +1,11 @@
 #include "ButtonListener.hpp"
 #include <iostream>
 
-static constexpr const char* GPIO_CHIP = "/dev/gpiochip4"; // /dev/gpiochip0 for Pi Zero 2 W
-
 
 ButtonListener::ButtonListener(EventBus& bus,
                                int upPin, int downPin,
                                int selectPin, int backPin)
     : bus(bus)
-    , chip(nullptr)
     , upButton(upPin)
     , downButton(downPin)
     , selectButton(selectPin)
@@ -20,25 +17,15 @@ ButtonListener::~ButtonListener() {
     downButton.release();
     selectButton.release();
     backButton.release();
-
-    if (chip) {
-        gpiod_chip_close(chip);
-        chip = nullptr;
-    }
 }
 
 bool ButtonListener::init() {
-    chip = gpiod_chip_open(GPIO_CHIP);
-    if (!chip) {
-        std::cerr << "ButtonListener: failed to open " << GPIO_CHIP << std::endl;
-        return false;
-    }
 
-    if (!upButton.init(chip) ||
-        !downButton.init(chip) ||
-        !selectButton.init(chip) ||
-        !backButton.init(chip)) {
-        std::cerr << "ButtonListener: failed to configure GPIO lines" << std::endl;
+    if (!upButton.init() ||
+        !downButton.init() ||
+        !selectButton.init() ||
+        !backButton.init()) {
+        perror("ButtonListener: failed to configure GPIO lines");
         return false;
     }
 
@@ -46,10 +33,22 @@ bool ButtonListener::init() {
 }
 
 void ButtonListener::poll() {
-    if (upButton.poll())     bus.publish(UpButtonPressed{});
-    if (downButton.poll())   bus.publish(DownButtonPressed{});
-    if (selectButton.poll()) bus.publish(SelectButtonPressed{});
-    if (backButton.poll())   bus.publish(BackButtonPressed{});
+    if (upButton.poll()) {
+        bus.publish(UpButtonPressed{});
+        Debugger::debug_msg("Up button pressed");
+    }
+    if (downButton.poll()) {
+        bus.publish(DownButtonPressed{});
+        Debugger::debug_msg("Down button pressed");
+    }
+    if (selectButton.poll()) {
+        bus.publish(SelectButtonPressed{});
+        Debugger::debug_msg("Select button pressed");
+    }
+    if (backButton.poll()) {
+        bus.publish(BackButtonPressed{});
+        Debugger::debug_msg("Back button pressed");
+    }
 }
 
 void ButtonListener::debugPoll() {

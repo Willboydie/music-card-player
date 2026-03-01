@@ -2,7 +2,7 @@
 #include "../../../../event/Event.hpp"
 
 void FoundDevicesMenu::loadFoundDevices() {
-    auto devices = DeviceStorage::load(DeviceStorage::FOUND_DEVICES_FILE);
+    auto devices = DeviceStorage::load(DeviceStorage::MOCK_DEVICES_FILE);
     int index = 0;
     for (const auto& device : devices) {
         auto option = static_cast<MenuOption>(
@@ -11,5 +11,6 @@ void FoundDevicesMenu::loadFoundDevices() {
             device.name, DeviceStorage::FOUND_DEVICES_FILE);
         items.push_back({ option, [address](EventBus& b){ b.publish(BluetoothConnectionRequested{ address }); }, device.name });
         ++index;
+        Debugger::debug_msg("FoundDevicesMenu: loaded device " + device.name + " " + address);
     }
 }

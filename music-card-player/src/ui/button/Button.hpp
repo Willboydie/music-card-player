@@ -1,7 +1,10 @@
 #pragma once
 
 #include <gpiod.h>
-#include <chrono>
+#include <iostream>
+#include <poll.h>
+
+static constexpr const char* GPIO_CHIP_PATH = "../../../dev/gpiochip0"; // check your chip name for a new device 
 
 // Represents a single active-low push button on a GPIO pin.
 //
@@ -15,22 +18,19 @@ public:
     explicit Button(int gpioPin);
 
     // Configure the GPIO line on the given chip.  Must be called before poll().
-    bool init(struct gpiod_chip* chip);
+    bool init();
 
     // Read the pin.  Returns true once per press (falling-edge, debounced).
     bool poll();
-
     void release();
 
 private:
-    int pin;
-    struct gpiod_chip *chip;
+    unsigned int pin;
+    const char *chip_path = GPIO_CHIP_PATH;
+    gpiod_chip *chip = nullptr;
 
-    // using Clock = std::chrono::steady_clock;
-    // static constexpr std::chrono::milliseconds DebouncePeriod{50};
-    // gpiod_line_request* request = nullptr;
-    // unsigned int offset_ = 0;
-    // bool wasPressed = false;
-    // bool lastStableState = false;
-    // Clock::time_point lastEdgeTime;
+    gpiod_line_request* request = nullptr;
+    gpiod_edge_event_buffer* buffer = nullptr;
+
+    int fd = -1;
 };

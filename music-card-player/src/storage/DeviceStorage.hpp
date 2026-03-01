@@ -3,6 +3,7 @@
 #include "../bluetooth/BluetoothDevice.hpp"
 #include <vector>
 #include <string>
+#include "../debugger/Debugger.hpp"
 
 // Flat-file persistence for BluetoothDevice lists.
 //
@@ -17,8 +18,9 @@
 
 class DeviceStorage {
 public:
-    static constexpr const char* SAVED_DEVICES_FILE = "saved_devices.txt";
-    static constexpr const char* FOUND_DEVICES_FILE = "found_devices.txt";
+    static constexpr const char* SAVED_DEVICES_FILE = "data/devices/saved_devices.txt";
+    static constexpr const char* FOUND_DEVICES_FILE = "data/devices/found_devices.txt";
+    static constexpr const char* MOCK_DEVICES_FILE = "data/devices/mock_devices.txt";
 
     // ── Bulk I/O ─────────────────────────────────────────────────
     static std::vector<BluetoothDevice> load(const std::string& filepath);
@@ -39,4 +41,5 @@ public:
     // Removes every device whose address matches.
     static bool removeDevice(const std::string& address,
                              const std::string& filepath);
+
 };

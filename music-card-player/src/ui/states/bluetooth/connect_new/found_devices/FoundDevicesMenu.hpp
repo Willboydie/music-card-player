@@ -17,6 +17,10 @@ public:
         loadFoundDevices();
         MenuState::onEntry();
     }
+    using MenuState::onEvent;
+    void onEvent(const BackButtonPressed&) override {
+        bus.publish(OpenConnectNewMenuRequested{});
+    }
 
 
 private:

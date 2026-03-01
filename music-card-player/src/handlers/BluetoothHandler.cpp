@@ -1,7 +1,7 @@
 #include "BluetoothHandler.hpp"
 #include <iostream>
 
-BluetoothHandler::BluetoothHandler(EventBus& bus, BluetoothManager& bluetoothManager)
+BluetoothHandler::BluetoothHandler(EventBus& bus, IBluetoothManager& bluetoothManager)
     : bus(bus)
     , bt(bluetoothManager)
 {
