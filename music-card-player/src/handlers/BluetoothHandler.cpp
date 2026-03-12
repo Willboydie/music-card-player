@@ -1,5 +1,4 @@
 #include "BluetoothHandler.hpp"
-#include <iostream>
 
 BluetoothHandler::BluetoothHandler(EventBus& bus, IBluetoothManager& bluetoothManager)
     : bus(bus)
@@ -7,14 +6,12 @@ BluetoothHandler::BluetoothHandler(EventBus& bus, IBluetoothManager& bluetoothMa
 {
     // ── Discovery ────────────────────────────────────────────────
     bus.subscribe<BluetoothDeviceSearchRequested>([&](const BluetoothDeviceSearchRequested&) {
-        if (!bt.startDiscovery()) {
-            std::cerr << "BluetoothHandler: failed to start discovery" << std::endl;
-        }
+        bt.discoverDevices();
     });
 
     bus.subscribe<BluetoothDeviceSearchAbortRequested>([&](const BluetoothDeviceSearchAbortRequested&) {
         // Stop discovery, persist whatever was found, and notify the UI
-        bt.completeDiscovery();
+        // bt.completeDiscovery();
         bus.publish(BluetoothDeviceSearchComplete{});
     });
 

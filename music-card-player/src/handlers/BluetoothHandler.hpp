@@ -1,9 +1,10 @@
 #pragma once
 
-#include "../ui/event/EventBus.hpp"
-#include "../ui/event/Event.hpp"
+#include "../event/EventBus.hpp"
+#include "../event/Event.hpp"
 #include "../bluetooth/IBluetoothManager.hpp"
 #include <string>
+#include <iostream>
 
 class BluetoothHandler {
 public:

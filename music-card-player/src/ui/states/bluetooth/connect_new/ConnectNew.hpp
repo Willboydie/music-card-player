@@ -1,23 +1,22 @@
 #pragma once
 
-#include "../../State.hpp"
-#include "../../../event/Event.hpp"
+#include "../../roles/menu_state/MenuState.hpp"
 
-class ConnectNew : public State {
+class ConnectNew : public MenuState {
 public:
-    explicit ConnectNew(EventBus& bus, Renderer& renderer, LoadingView& view, std::string name)
-    : State(bus, renderer, view, name)
+    explicit ConnectNew(EventBus& bus, Renderer& renderer, MenuView& view, std::string name)
+    : MenuState(bus, renderer, view, name)
     {
-        view.message = "Press select to search";
+        view.title = "Connect New";
+        items = {
+            { [](EventBus& b){
+                b.publish(BluetoothDeviceSearchRequested{});
+            }, "Search for Devices" }
+        };
     }
 
-    void onEvent(const SelectButtonPressed&) override {
-        bus.publish(BluetoothDeviceSearchRequested{});
-        bus.publish(OpenSearchingForDevicesMenuRequested{});
-    }
-
+    using MenuState::onEvent;
     void onEvent(const BackButtonPressed&) override {
-        bus.publish(BluetoothConnectionAbortRequested{});
         bus.publish(OpenBluetoothMenuStateRequested{});
     }
 };

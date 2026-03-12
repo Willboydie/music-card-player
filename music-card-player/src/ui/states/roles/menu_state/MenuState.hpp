@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../../State.hpp"
-#include "MenuOption.hpp"
 #include "MenuItem.hpp"
 #include <vector>
 

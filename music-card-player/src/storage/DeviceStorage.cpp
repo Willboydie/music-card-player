@@ -1,6 +1,4 @@
 #include "DeviceStorage.hpp"
-#include <fstream>
-#include <algorithm>
 
 static constexpr char Delimiter = '|';
 

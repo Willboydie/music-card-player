@@ -1,5 +1,4 @@
 #include "ButtonListener.hpp"
-#include <iostream>
 
 
 ButtonListener::ButtonListener(EventBus& bus,

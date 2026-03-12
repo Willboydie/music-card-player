@@ -3,6 +3,8 @@
 #include "../bluetooth/BluetoothDevice.hpp"
 #include <vector>
 #include <string>
+#include <fstream>
+#include <algorithm>
 #include "../debugger/Debugger.hpp"
 
 // Flat-file persistence for BluetoothDevice lists.

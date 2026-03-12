@@ -46,32 +46,34 @@ NavigationHandler::NavigationHandler(EventBus& bus, StateMachine& stateMachine)
         sm.transitionTo(StateId::CONNECT_NEW);
     });
 
-    bus.subscribe<OpenSearchingForDevicesMenuRequested>([&](const OpenSearchingForDevicesMenuRequested&) {
-        sm.transitionTo(StateId::SEARCHING_FOR_DEVICES);
-    });
-
     bus.subscribe<OpenFoundDevicesMenuRequested>([&](const OpenFoundDevicesMenuRequested&) {
         sm.transitionTo(StateId::FOUND_DEVICES);
     });
 
-    bus.subscribe<OpenBluetoothConnectingMenuRequested>([&](const OpenBluetoothConnectingMenuRequested&) {
-        sm.transitionTo(StateId::CONNECTING);
-    });
 
     // ── Outcome events that also drive navigation ────────────────
+
+    bus.subscribe<BluetoothDeviceSearchRequested>([&](const BluetoothDeviceSearchRequested&) {
+        sm.transitionTo(StateId::SEARCHING_FOR_DEVICES);
+    });
+
+    bus.subscribe<BluetoothDeviceSearchAbortRequested>([&](const BluetoothDeviceSearchAbortRequested&) {
+        sm.transitionTo(StateId::BLUETOOTH_MENU);
+    });
+
     bus.subscribe<BluetoothDeviceSearchComplete>([&](const BluetoothDeviceSearchComplete&) {
         sm.transitionTo(StateId::FOUND_DEVICES);
     });
 
     bus.subscribe<BluetoothConnected>([&](const BluetoothConnected&) {
-        sm.transitionTo(StateId::BLUETOOTH_MENU);
+        sm.transitionTo(StateId::MAIN_MENU);
     });
 
     bus.subscribe<BluetoothConnectionFailed>([&](const BluetoothConnectionFailed&) {
         sm.transitionTo(StateId::BLUETOOTH_MENU);
     });
 
-    bus.subscribe<BluetoothConnectionRequested>([&](const BluetoothConnectionRequested&) {
-        sm.transitionTo(StateId::CONNECTING);
+    bus.subscribe<BluetoothConnectionAbortRequested>([&](const BluetoothConnectionAbortRequested&) {
+        sm.transitionTo(StateId::BLUETOOTH_MENU);
     });
 }

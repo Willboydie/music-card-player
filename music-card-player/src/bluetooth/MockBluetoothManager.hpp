@@ -6,8 +6,8 @@
 #include <vector>
 #include "../debugger/Debugger.hpp"
 #include "../storage/DeviceStorage.hpp"
-#include "../ui/event/EventBus.hpp"
-#include "../ui/event/Event.hpp"
+#include "../event/EventBus.hpp"
+#include "../event/Event.hpp"
 
 #include <chrono>
 #include <thread>
@@ -33,30 +33,12 @@ public:
         return true;
     }
 
-    bool startDiscovery() override {
-        Debugger::debug_msg("MockBluetoothManager: started discovery");
-        return true;
-    }
-    bool stopDiscovery() override {
-        Debugger::debug_msg("MockBluetoothManager: stopped discovery");
-        return true;
-    }
-
-    std::vector<BluetoothDevice> getDiscoveredDevices() override {
-        Debugger::debug_msg("MockBluetoothManager: getting discovered devices...");
+    void discoverDevices() override {
+        Debugger::debug_msg("MockBluetoothManager: searching for devices...");
         std::this_thread::sleep_for(std::chrono::seconds(3));
-        Debugger::debug_msg("MockBluetoothManager: discovered " + std::to_string(DeviceStorage::load(DeviceStorage::MOCK_DEVICES_FILE).size()) + " devices");
-        return DeviceStorage::load(DeviceStorage::MOCK_DEVICES_FILE);
-    }
-
-    std::vector<BluetoothDevice> completeDiscovery() override {
-        Debugger::debug_msg("MockBluetoothManager: completing discovery");
-        auto devices = DeviceStorage::load(DeviceStorage::MOCK_DEVICES_FILE);
-        for (const auto& device : devices) {
-            eventBus_.publish(BluetoothDeviceDiscovered{device.name + " " + device.address});
-        }
+        Debugger::debug_msg("Search complete.");
         eventBus_.publish(BluetoothDeviceSearchComplete{});
-        return devices;
+        return;
     }
 
     bool pair(const std::string& mac) override {

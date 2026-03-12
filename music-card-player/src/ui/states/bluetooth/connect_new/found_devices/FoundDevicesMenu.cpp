@@ -3,14 +3,12 @@
 
 void FoundDevicesMenu::loadFoundDevices() {
     auto devices = DeviceStorage::load(DeviceStorage::MOCK_DEVICES_FILE);
-    int index = 0;
     for (const auto& device : devices) {
-        auto option = static_cast<MenuOption>(
-            static_cast<int>(MenuOption::DynamicStartDevices) + index);
         std::string address = DeviceStorage::findAddressByName(
             device.name, DeviceStorage::FOUND_DEVICES_FILE);
-        items.push_back({ option, [address](EventBus& b){ b.publish(BluetoothConnectionRequested{ address }); }, device.name });
-        ++index;
+        items.push_back({ [address](EventBus& b){ 
+            b.publish(BluetoothConnectionRequested{ address }); 
+        }, device.name });
         Debugger::debug_msg("FoundDevicesMenu: loaded device " + device.name + " " + address);
     }
 }

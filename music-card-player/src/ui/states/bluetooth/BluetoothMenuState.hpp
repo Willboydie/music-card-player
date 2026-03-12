@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../roles/menu_state/MenuState.hpp"
-#include "../../event/Event.hpp"
 
 
 class BluetoothMenuState : public MenuState {
@@ -11,8 +10,8 @@ public:
     {
         view.title = "Bluetooth";
         items = {
-            { MenuOption::BluetoothSettings, [](EventBus& b){ b.publish(OpenSavedDevicesMenuRequested{}); }, "Saved Devices" },
-            { MenuOption::DynamicStartBluetooth, [](EventBus& b){ b.publish(OpenConnectNewMenuRequested{}); }, "Connect New" }
+            { [](EventBus& b){ b.publish(OpenSavedDevicesMenuRequested{}); }, "Saved Devices" },
+            { [](EventBus& b){ b.publish(OpenConnectNewMenuRequested{}); }, "Connect New" }
         };
     }
 

@@ -1,22 +1,5 @@
 #include "AppController.hpp"
 
-#include "../ui/event/EventBus.hpp"
-#include "../ui/button/ButtonListener.hpp"
-#include "../ui/screen/Screen.hpp"
-#include "../ui/view/Renderer.hpp"
-#include "../ui/state_machine/StateMachine.hpp"
-#include "../ui/state_machine/StateBuilder.hpp"
-#include "../audio/AudioManager.hpp"
-#include "../bluetooth/BluetoothManager.hpp"
-#include "../handlers/NavigationHandler.hpp"
-#include "../handlers/AudioHandler.hpp"
-#include "../handlers/BluetoothHandler.hpp"
-#include "../debugger/Debugger.hpp"
-
-#include <iostream>
-#include <chrono>
-#include <thread>
-
 
 // GPIO pin assignments for the four push buttons
 static constexpr int up_pin     = UP_PIN;

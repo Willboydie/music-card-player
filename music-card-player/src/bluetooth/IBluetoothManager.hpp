@@ -16,10 +16,7 @@ public:
     virtual bool powerOn() = 0;
 
     // ── Discovery ────────────────────────────────────────────────
-    virtual bool startDiscovery() = 0;
-    virtual bool stopDiscovery() = 0;
-    virtual std::vector<BluetoothDevice> getDiscoveredDevices() = 0;
-    virtual std::vector<BluetoothDevice> completeDiscovery() = 0;
+    virtual void discoverDevices() = 0;
 
     // ── Device management ────────────────────────────────────────
     virtual bool pair(const std::string& mac) = 0;

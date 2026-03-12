@@ -20,8 +20,6 @@ struct OpenPlayerStateRequested {};
 struct OpenBluetoothMenuStateRequested {};
 struct OpenSavedDevicesMenuRequested {};
 struct OpenConnectNewMenuRequested {};
-struct OpenSearchingForDevicesMenuRequested {};
-struct OpenBluetoothConnectingMenuRequested {};
 struct OpenFoundDevicesMenuRequested {};
 struct OpenMainMenuStateRequested {};
 

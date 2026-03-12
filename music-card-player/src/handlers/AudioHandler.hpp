@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../ui/event/EventBus.hpp"
-#include "../ui/event/Event.hpp"
+#include "../event/EventBus.hpp"
+#include "../event/Event.hpp"
 #include "../audio/IAudioManager.hpp"
 
 class AudioHandler {

@@ -1,5 +1,5 @@
 #include "StateBuilder.hpp"
-#include "../event/EventBus.hpp"
+#include "../../event/EventBus.hpp"
 #include "../view/Renderer.hpp"
 #include "../view/View.hpp"
 
@@ -24,7 +24,7 @@ std::unique_ptr<StateMachine> buildStateMachine(EventBus& bus, Renderer& rendere
     stateMachine->registerState(StateId::SAVED_DEVICES,
         std::make_unique<SavedDevicesMenu>(bus, renderer, *mv, "Saved Devices"));
     stateMachine->registerState(StateId::CONNECT_NEW,
-        std::make_unique<ConnectNew>(bus, renderer, *lv, "Connect New"));
+        std::make_unique<ConnectNew>(bus, renderer, *mv, "Connect New"));
     stateMachine->registerState(StateId::SEARCHING_FOR_DEVICES,
         std::make_unique<SearchingForDevices>(bus, renderer, *lv, "Searching For Devices"));
     stateMachine->registerState(StateId::FOUND_DEVICES,

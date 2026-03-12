@@ -7,7 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include "../../debugger/Debugger.hpp"
+#include "../debugger/Debugger.hpp"
 
 // Type-safe publish / subscribe event bus.
 //

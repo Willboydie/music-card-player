@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../ui/event/EventBus.hpp"
-#include "../ui/event/Event.hpp"
+#include "../event/EventBus.hpp"
+#include "../event/Event.hpp"
 #include "../ui/state_machine/StateMachine.hpp"
 
 // Subscribes to button-press and navigation events on the EventBus

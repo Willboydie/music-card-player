@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../screen/Screen.hpp"
-#include "../event/EventBus.hpp"
-#include "../event/Event.hpp"
+#include "../../event/EventBus.hpp"
+#include "../../event/Event.hpp"
 #include "../view/Renderer.hpp"
 #include "../view/View.hpp"
 #include "../../debugger/Debugger.hpp"

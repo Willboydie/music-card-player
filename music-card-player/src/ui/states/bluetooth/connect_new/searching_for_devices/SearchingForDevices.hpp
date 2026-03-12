@@ -10,8 +10,12 @@ public:
         view.message = "Searching...";
     }
 
+    void onEntry() override {
+        State::onEntry();
+        bus.publish(BluetoothDeviceSearchRequested{});
+    }
+
     void onEvent(const BackButtonPressed&) override {
         bus.publish(BluetoothDeviceSearchAbortRequested{});
-        bus.publish(OpenConnectNewMenuRequested{});
     }
 };

@@ -7,7 +7,7 @@
 #include <vector>
 #include "../debugger/Debugger.hpp"
 #include "../storage/DeviceStorage.hpp"
-#include "../ui/event/EventBus.hpp"
+#include "../event/EventBus.hpp"
 #include <cstring>
 #include <iostream>
 
@@ -22,10 +22,11 @@ public:
     bool initialise() override;
     void shutdown() override;
     bool powerOn() override;
-    bool startDiscovery() override;
-    bool stopDiscovery() override;
-    std::vector<BluetoothDevice> getDiscoveredDevices() override;
-    std::vector<BluetoothDevice> completeDiscovery() override;
+    void discoverDevices() override;
+    // bool startDiscovery() override;
+    // bool stopDiscovery() override;
+    // std::vector<BluetoothDevice> getDiscoveredDevices() override;
+    // std::vector<BluetoothDevice> completeDiscovery() override;
     bool pair(const std::string& mac) override;
     bool trust(const std::string& mac) override;
     bool connect(const std::string& mac) override;

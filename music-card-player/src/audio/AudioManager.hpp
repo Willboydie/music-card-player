@@ -5,7 +5,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <string>
 #include "../debugger/Debugger.hpp"
-#include "../ui/event/EventBus.hpp"
+#include "../event/EventBus.hpp"
 
 class AudioManager : public IAudioManager {
 public:

@@ -3,7 +3,7 @@
 #include "IAudioManager.hpp"
 #include <string>
 #include "../debugger/Debugger.hpp"
-#include "../ui/event/EventBus.hpp"
+#include "../event/EventBus.hpp"
 
 class MockAudioManager : public IAudioManager {
 public:

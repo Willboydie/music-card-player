@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../roles/menu_state/MenuState.hpp"
-#include "../../event/Event.hpp"
 
 
 class MainMenuState : public MenuState {
@@ -11,8 +10,8 @@ public:
     {
         view.title = "Main Menu";
         items = {
-            { MenuOption::AudioSettings, [](EventBus& b){ b.publish(OpenPlayerStateRequested{}); }, "Player" },
-            { MenuOption::BluetoothSettings, [](EventBus& b){ b.publish(OpenBluetoothMenuStateRequested{}); }, "Bluetooth" }
+            { [](EventBus& b){ b.publish(OpenPlayerStateRequested{}); }, "Player" },
+            { [](EventBus& b){ b.publish(OpenBluetoothMenuStateRequested{}); }, "Bluetooth" }
         };
     }
 

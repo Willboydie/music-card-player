@@ -1,8 +1,4 @@
 #include "BluetoothManager.hpp"
-#include "../storage/DeviceStorage.hpp"
-#include "../ui/event/Event.hpp"
-#include <cstring>
-#include <iostream>
 
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -51,80 +47,81 @@ bool BluetoothManager::powerOn() {
 
 // ── Discovery ────────────────────────────────────────────────────────────────
 
-bool BluetoothManager::startDiscovery() {
-    Debugger::debug_msg("BluetoothManager: starting discovery");
-    return callMethod(adapterPath, "org.bluez.Adapter1", "StartDiscovery");
-}
+// bool BluetoothManager::startDiscovery() {
+//     Debugger::debug_msg("BluetoothManager: starting discovery");
+//     return callMethod(adapterPath, "org.bluez.Adapter1", "StartDiscovery");
+// }
 
-bool BluetoothManager::stopDiscovery() {
-    Debugger::debug_msg("BluetoothManager: stopping discovery");
-    return callMethod(adapterPath, "org.bluez.Adapter1", "StopDiscovery");
-}
+// bool BluetoothManager::stopDiscovery() {
+//     Debugger::debug_msg("BluetoothManager: stopping discovery");
+//     return callMethod(adapterPath, "org.bluez.Adapter1", "StopDiscovery");
+// }
 
-std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
-    Debugger::debug_msg("BluetoothManager: getting discovered devices");
-    std::vector<BluetoothDevice> devices;
-    GError* error = nullptr;
+// std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
+//     Debugger::debug_msg("BluetoothManager: getting discovered devices");
+//     std::vector<BluetoothDevice> devices;
+//     GError* error = nullptr;
 
-    GVariant* result = g_dbus_connection_call_sync(
-        dbus, "org.bluez", "/",
-        "org.freedesktop.DBus.ObjectManager", "GetManagedObjects",
-        nullptr,
-        G_VARIANT_TYPE("(a{oa{sa{sv}}})"),
-        G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
+//     GVariant* result = g_dbus_connection_call_sync(
+//         dbus, "org.bluez", "/",
+//         "org.freedesktop.DBus.ObjectManager", "GetManagedObjects",
+//         nullptr,
+//         G_VARIANT_TYPE("(a{oa{sa{sv}}})"),
+//         G_DBUS_CALL_FLAGS_NONE, -1, nullptr, &error);
 
-    if (error) {
-        std::cerr << "BluetoothManager: getDiscoveredDevices failed: "
-                  << error->message << std::endl;
-        g_error_free(error);
-        return devices;
-    }
+//     if (error) {
+//         std::cerr << "BluetoothManager: getDiscoveredDevices failed: "
+//                   << error->message << std::endl;
+//         g_error_free(error);
+//         return devices;
+//     }
 
-    GVariantIter* iter;
-    const gchar* objectPath;
-    GVariant* interfaces;
+//     GVariantIter* iter;
+//     const gchar* objectPath;
+//     GVariant* interfaces;
 
-    g_variant_get(result, "(a{oa{sa{sv}}})", &iter);
+//     g_variant_get(result, "(a{oa{sa{sv}}})", &iter);
 
-    while (g_variant_iter_next(iter, "{&o@a{sa{sv}}}", &objectPath, &interfaces)) {
-        if (std::strstr(objectPath, "/dev_") != nullptr) {
-            GVariant* props = g_variant_lookup_value(
-                interfaces, "org.bluez.Device1", nullptr);
+//     while (g_variant_iter_next(iter, "{&o@a{sa{sv}}}", &objectPath, &interfaces)) {
+//         if (std::strstr(objectPath, "/dev_") != nullptr) {
+//             GVariant* props = g_variant_lookup_value(
+//                 interfaces, "org.bluez.Device1", nullptr);
 
-            if (props) {
-                BluetoothDevice device;
-                device.name = "Unknown";
+//             if (props) {
+//                 BluetoothDevice device;
+//                 device.name = "Unknown";
 
-                GVariant* v = g_variant_lookup_value(props, "Name", nullptr);
-                if (v) { device.name = g_variant_get_string(v, nullptr); g_variant_unref(v); }
+//                 GVariant* v = g_variant_lookup_value(props, "Name", nullptr);
+//                 if (v) { device.name = g_variant_get_string(v, nullptr); g_variant_unref(v); }
 
-                v = g_variant_lookup_value(props, "Address", nullptr);
-                if (v) { device.address = g_variant_get_string(v, nullptr); g_variant_unref(v); }
+//                 v = g_variant_lookup_value(props, "Address", nullptr);
+//                 if (v) { device.address = g_variant_get_string(v, nullptr); g_variant_unref(v); }
 
-                devices.push_back(std::move(device));
-                g_variant_unref(props);
-            }
-        }
-        g_variant_unref(interfaces);
-    }
+//                 devices.push_back(std::move(device));
+//                 g_variant_unref(props);
+//             }
+//         }
+//         g_variant_unref(interfaces);
+//     }
 
-    g_variant_iter_free(iter);
-    g_variant_unref(result);
-    Debugger::debug_msg("BluetoothManager: got " + std::to_string(devices.size()) + " discovered devices");
-    return devices;
-}
+//     g_variant_iter_free(iter);
+//     g_variant_unref(result);
+//     Debugger::debug_msg("BluetoothManager: got " + std::to_string(devices.size()) + " discovered devices");
+//     return devices;
+// }
 
-std::vector<BluetoothDevice> BluetoothManager::completeDiscovery() {
-    Debugger::debug_msg("BluetoothManager: completing discovery");
-    stopDiscovery();
-    auto devices = getDiscoveredDevices();
-    DeviceStorage::save(devices, DeviceStorage::FOUND_DEVICES_FILE);
-    for (const auto& device : devices) {
-        eventBus_.publish(BluetoothDeviceDiscovered{device.name + " " + device.address});
-    }
-    eventBus_.publish(BluetoothDeviceSearchComplete{});
-    Debugger::debug_msg("BluetoothManager: completed discovery");
-    return devices;
+// std::vector<BluetoothDevice> BluetoothManager::completeDiscovery() {
+//     Debugger::debug_msg("BluetoothManager: completing discovery");
+//     stopDiscovery();
+//     auto devices = getDiscoveredDevices();
+//     DeviceStorage::save(devices, DeviceStorage::FOUND_DEVICES_FILE);
+//     eventBus_.publish(BluetoothDeviceSearchComplete{});
+//     Debugger::debug_msg("BluetoothManager: completed discovery");
+//     return devices;
+// }
+
+void BluetoothManager::discoverDevices() {
+    return;
 }
 
 
