@@ -1,22 +1,4 @@
-#include "../lib/utils/constants.h"
-
-#include "../lib/event/EventBus.hpp"
-#include "../lib/button/ButtonListener.hpp"
-#include "../lib/screen/Screen.hpp"
-#include "../lib/view/Renderer.hpp"
-#include "../lib/state_machine/StateMachine.hpp"
-#include "../lib/state_machine/StateBuilder.hpp"
-#include "../lib/audio/MockAudioManager.hpp"
-#include "../lib/bluetooth/MockBluetoothManager.hpp"
-#include "../lib/handlers/NavigationHandler.hpp"
-#include "../lib/handlers/AudioHandler.hpp"
-#include "../lib/handlers/BluetoothHandler.hpp"
-#include "../lib/debugger/Debugger.hpp"
-#include "../lib/storage/DeviceStorage.hpp"
-
-#include <iostream>
-#include <chrono>
-#include <thread>
+#include "AppController.hpp"
 
 
 // GPIO pin assignments for the four push buttons
@@ -30,10 +12,8 @@ static constexpr int sda_pin = SDA_PIN;
 static constexpr int scl_pin = SCL_PIN;
 
 
-static void navigation_test() {
+void AppController::run() {
     // auto start_time = std::chrono::steady_clock::now();
-
-    Debugger::debugMode = true;
 
     // ── Core infrastructure ──────────────────────────────────────
     EventBus bus;
@@ -44,10 +24,10 @@ static void navigation_test() {
     Renderer renderer(screen);
 
     // ── Managers ─────────────────────────────────────────────────
-    MockAudioManager audio(bus);
+    AudioManager audio(bus);
     audio.initialise();
 
-    MockBluetoothManager bluetooth(bus);
+    BluetoothManager bluetooth(bus);
     bluetooth.initialise();
     bluetooth.powerOn();
 
@@ -58,26 +38,31 @@ static void navigation_test() {
     ButtonListener buttons(bus, up_pin, down_pin, select_pin, back_pin);
     buttons.init();
 
-    // ── Event handlers ─────────────────────────────────────────
+    // ── Event handlers (subscribe to EventBus, delegate to managers)
+    bool running = true;
+    bus.subscribe<ExitRequested>([&running](const ExitRequested&) { running = false; });
     NavigationHandler navigationHandler(bus, *stateMachine);
     AudioHandler      audioHandler(bus, audio);
     BluetoothHandler  bluetoothHandler(bus, bluetooth, deviceStorage);
 
     // ── Main loop ────────────────────────────────────────────────
-    while (true) {
+    while (running) {
         buttons.poll();
         screen.refresh();
         
         // if (std::chrono::steady_clock::now() - start_time > std::chrono::seconds(1)) {
         //     if (std::cin.get() == 'q') {
-        //         std::cout << "Navigation test: Exiting..." << std::endl;
+        //         std::cout << "AppController: Exiting..." << std::endl;
         //         break;
         //     }
+        //     if (std::cin.get() == 'D') {
+        //         Debugger::debugMode = true;
+        //         std::cout << "Debug mode enabled" << std::endl;
+        //     } else if (std::cin.get() == 'D') {
+        //         Debugger::debugMode = false;
+        //         std::cout << "Debug mode disabled" << std::endl;
+        //     }
+        //     start_time = std::chrono::steady_clock::now();
         // }
     }
-}
-
-int main() {
-    navigation_test();
-    return 0;
 }

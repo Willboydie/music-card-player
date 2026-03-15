@@ -22,7 +22,7 @@ static void test_state_machine() {
     Screen screen(2, 3);  // Don't call init() – avoids I2C
     Renderer renderer(screen);
 
-    auto stateMachine = buildStateMachine(bus, renderer);
+    auto stateMachine = buildStateMachine(bus, renderer, screen);
 
     // Initial state
     expectState(*stateMachine, StateId::MAIN_MENU);

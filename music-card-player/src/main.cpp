@@ -1,4 +1,4 @@
-#include "app_controller/AppController.hpp"
+#include "../lib/app_controller/AppController.hpp"
 
 int main() {
     AppController appController;
