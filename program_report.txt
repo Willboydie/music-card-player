@@ -1,0 +1,518 @@
+MUSIC CARD PLAYER — TECHNICAL REPORT
+=====================================
+Generated: 2026-04-05
+Target Platform: Raspberry Pi 5 (aarch64), Pi Zero 2 W supported
+Language: C++17
+Build System: GNU Make + g++
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PROJECT OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The Music Card Player is an embedded Linux application that runs on a Raspberry
+Pi. It provides a self-contained music playback system controlled entirely by
+four physical GPIO buttons, with a 128×64 SSD1106 OLED display for the user
+interface. Audio output is routed through the system audio stack (PulseAudio)
+to a Bluetooth A2DP speaker or headphones, whose pairing and connection are
+managed directly by the application through BlueZ on the system D-Bus.
+
+The application has no keyboard, mouse, or network-facing UI. All interaction
+happens through the four buttons (UP, DOWN, SELECT, BACK), and all state is
+reflected on the OLED screen in real time.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. REPOSITORY LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+music-card-player/               ← repo root
+├── music-card-player/           ← firmware/application source (deployed to Pi)
+│   ├── Makefile
+│   ├── README.md
+│   ├── src/
+│   │   └── main.cpp             ← program entry point
+│   ├── lib/                     ← all modules
+│   │   ├── app_controller/      ← top-level wiring and main loop
+│   │   ├── audio/               ← SDL2_mixer audio playback
+│   │   ├── bluetooth/           ← BlueZ D-Bus Bluetooth management
+│   │   ├── button/              ← libgpiod GPIO button input
+│   │   ├── debugger/            ← optional debug logging gate
+│   │   ├── event/               ← EventBus and all event definitions
+│   │   ├── handlers/            ← event-to-manager bridge handlers
+│   │   ├── screen/              ← I2C SSD1106 display driver
+│   │   ├── state_machine/       ← state machine core and builder
+│   │   ├── states/              ← concrete UI states
+│   │   ├── storage/             ← Bluetooth device list persistence
+│   │   ├── utils/               ← shared constants
+│   │   └── view/                ← view structs, renderer, font
+│   │       └── font/
+│   ├── tests/                   ← unit/integration tests
+│   └── data/devices/            ← runtime device list text files
+├── tools/
+│   ├── BT.py                    ← standalone BlueZ D-Bus scanner (debug aid)
+│   └── README.md
+├── deploy.ps1                   ← Windows deploy script (SCP to Pi)
+├── deploy.sh                    ← Linux/Mac deploy script
+└── .gitignore
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. HARDWARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Component         | Detail
+------------------+-----------------------------------------------------------
+SBC               | Raspberry Pi 5 (primary), Pi Zero 2 W (secondary)
+Display           | SSD1106 OLED, 128×64 pixels, I2C address 0x3C on /dev/i2c-1
+Display wiring    | SDA → GPIO 2, SCL → GPIO 3
+Buttons           | 4× momentary pushbutton, active-low (pin to GND)
+Button GPIO (BCM) | UP=4, DOWN=5, SELECT=6, BACK=7
+GPIO chip         | gpiochip4 (Pi 5); gpiochip0 (Zero 2 W, requires code change)
+Audio output      | Bluetooth A2DP speaker/headphones via BlueZ + PulseAudio
+Audio file format | MP3 (SDL2_mixer)
+
+The four buttons are the sole input mechanism. Pressing a button pulls its GPIO
+line low, which libgpiod detects as a falling-edge event.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. BUILD SYSTEM AND DEPENDENCIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The build system is a hand-written GNU Makefile (no CMake). The compiler is
+g++ with C++17 and -O2. Pi 5-specific tuning flags are applied:
+  -march=armv8.2-a+crypto -mtune=cortex-a76
+
+Compiler inputs are discovered via pkg-config for:
+  - gio-2.0        (GLib/GObject/GDBus — Bluetooth)
+  - sdl2           (audio init)
+  - SDL2_mixer     (audio playback)
+  - libgpiod       (falls back to -lgpiod if pkg-config unavailable)
+
+Object files are placed under build/. The primary output is the binary
+`music-card-player`.
+
+The Makefile also defines test targets:
+  run_button_test, run_state_machine_test, run_navigation_test,
+  run_bluetooth_test
+
+(Note: a run_audio_test target is declared but tests/audio_test.cpp does not
+exist in the repository, so that target will fail if invoked.)
+
+Runtime dependencies on the Pi (installed via apt):
+  build-essential, bluez, bluez-tools, pulseaudio,
+  pulseaudio-module-bluetooth, libglib2.0-dev, libsdl2-dev,
+  libsdl2-mixer-dev, libgpiod-dev, i2c-tools
+
+For the Python debug tool (tools/BT.py):
+  python3-dbus
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. ARCHITECTURE OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The application uses three interlocking patterns:
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │              EventBus (pub/sub by std::type_index)           │
+  │  ButtonListener → Events → Handlers → StateMachine/Managers  │
+  └──────────────────────────────────────────────────────────────┘
+
+  1. EVENT BUS — a type-safe publish/subscribe bus. Events are plain structs.
+     Subscribers register callbacks keyed on the event's std::type_index.
+     On dispatch, the handler list is copied before iteration so handlers
+     may safely add/remove subscriptions during delivery.
+
+  2. STATE MACHINE — a registry of State objects keyed by a state ID enum.
+     Only one state is active at a time. State::onEntry / onExit lifecycle
+     methods fire on transitions. The active state receives all dispatched
+     events via onEvent<T> overloads. State transitions are requested by
+     publishing navigation events through the EventBus.
+
+  3. HANDLERS — standalone subscriber objects that bridge the EventBus to
+     the StateMachine or to the hardware managers (AudioManager,
+     BluetoothManager). They decouple UI state from side-effecting code.
+
+All objects are constructed and wired together in AppController. The main loop
+is a simple synchronous poll:
+
+  while (running) {
+      buttons.poll();      // non-blocking GPIO edge poll
+      screen.refresh();    // push pixel buffer to display
+  }
+
+There is no RTOS, no threading in the application layer (BlueZ D-Bus calls
+may block on their own threads internally), and no async I/O framework. The
+design relies on fast button polling and quick handler execution to stay
+responsive.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. MODULE REFERENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+─── 6.1 AppController (lib/app_controller/) ───────────────────────────────────
+
+The top-level composition root. AppController::run() performs startup in order:
+
+  1. Screen::init()                — open I2C bus, send SSD1106 init sequence
+  2. AudioManager::initialise()    — init SDL2 and SDL2_mixer
+  3. BluetoothManager::initialise() + powerOn() — connect to BlueZ on D-Bus
+  4. buildStateMachine()           — construct all states, register with machine
+  5. stateMachine.transitionTo(MAIN_MENU)
+  6. ButtonListener::init()        — open GPIO chip, request four lines
+  7. EventBus subscriptions:
+       - ExitRequested → set running=false
+       - NavigationHandler subscribes to all navigation events
+       - AudioHandler subscribes to audio control events
+       - BluetoothHandler subscribes to Bluetooth search/connect events
+
+  Then enters the main loop until ExitRequested is published.
+
+─── 6.2 EventBus (lib/event/) ────────────────────────────────────────────────
+
+Files: Event.hpp, EventBus.hpp
+
+Event.hpp defines all event structs used throughout the application, grouped
+by concern:
+
+  Button events:       UpButtonPressed, DownButtonPressed,
+                       SelectButtonPressed, BackButtonPressed
+  Navigation events:   OpenMainMenuStateRequested, OpenPlayerStateRequested,
+                       OpenBluetoothMenuStateRequested,
+                       OpenSearchingForDevicesMenuRequested,
+                       OpenFoundDevicesMenuRequested,
+                       OpenConnectingStateRequested { device_info },
+                       OpenSavedDevicesMenuRequested, ExitRequested
+  Audio events:        MusicPlayPauseRequested, MusicStopRequested,
+                       VolumeChangeRequested { volume }
+  Bluetooth events:    BluetoothDeviceSearchRequested,
+                       BluetoothDeviceSearchComplete,
+                       BluetoothConnectionRequested { address },
+                       BluetoothConnected, BluetoothConnectionFailed
+
+EventBus::publish<T>(event) copies the handler list then calls each callback.
+EventBus::subscribe<T>(callback) registers by std::type_index.
+
+─── 6.3 StateMachine (lib/state_machine/) ────────────────────────────────────
+
+Files: StateMachine.hpp/.cpp, StateBuilder.hpp/.cpp, StateId.hpp
+
+StateMachine holds a map of StateId → State*. transitionTo(id) calls
+currentState->onExit(), switches the pointer, calls newState->onEntry().
+onEvent<T>(event) forwards to currentState->onEvent<T>(event) using virtual
+dispatch.
+
+StateBuilder::buildStateMachine(deps...) constructs all concrete state objects
+and registers them, returning the configured machine.
+
+State IDs:
+  MAIN_MENU, BLUETOOTH_MENU, SEARCHING_FOR_DEVICES, FOUND_DEVICES,
+  CONNECTING, SAVED_DEVICES, PLAYER, LOADING
+
+─── 6.4 States (lib/states/) ─────────────────────────────────────────────────
+
+All states inherit from the State base class. Each state owns a View object
+for its UI and overrides onEvent<T> for the button events it handles.
+
+State            | Description
+-----------------+-------------------------------------------------------------
+MenuState        | MAIN_MENU — top-level menu (Player, Bluetooth, Exit)
+BluetoothMenuState | BLUETOOTH_MENU — Saved Devices / Connect New
+SearchingForDevicesState | Displays a loading animation; onEntry publishes
+                 | BluetoothDeviceSearchRequested to trigger discovery.
+FoundDevicesState | Lists scanned Bluetooth devices; SELECT on an item
+                 | publishes OpenConnectingStateRequested{address}.
+ConnectingState  | Shows a "Connecting…" loading view; onEntry publishes
+                 | BluetoothConnectionRequested{address}.
+SavedDevicesState | Lists devices from saved_devices.txt; SELECT attempts
+                 | connection using address looked up from mock_devices.txt.
+PlayerState      | Music playback UI (play/pause, volume up/down, back).
+LoadingState     | Generic loading screen used during transitions.
+
+─── 6.5 Handlers (lib/handlers/) ─────────────────────────────────────────────
+
+NavigationHandler:
+  Subscribes to all four button events and all navigation/outcome events.
+  Forwards button presses to stateMachine.onEvent<T>().
+  Maps navigation events (e.g., OpenPlayerStateRequested) to
+  stateMachine.transitionTo(PLAYER), etc.
+  On OpenConnectingStateRequested, writes device_info into the CONNECTING
+  state's State::info field before transitioning.
+
+AudioHandler:
+  Subscribes to MusicPlayPauseRequested, MusicStopRequested,
+  VolumeChangeRequested.
+  Calls the corresponding IAudioManager methods.
+
+BluetoothHandler:
+  Subscribes to BluetoothDeviceSearchRequested and
+  BluetoothConnectionRequested.
+  On search: calls BluetoothManager::discoverDevices() (blocking ~10s).
+  On connection: calls pair() + trust() + save() + connect() in sequence;
+  publishes BluetoothConnected or BluetoothConnectionFailed.
+
+  Note: BluetoothManager::connect() internally also publishes
+  BluetoothConnected/Failed, so on a successful connect BluetoothConnected
+  is emitted twice (once from the manager, once from the handler). This is
+  benign currently but is worth auditing if additional subscribers are added.
+
+─── 6.6 Screen / Display (lib/screen/) ───────────────────────────────────────
+
+Screen opens /dev/i2c-1 with ioctl(I2C_SLAVE, 0x3C), sends the SSD1106
+initialisation command sequence (charge pump, contrast, display on, etc.),
+and exposes a 128×64 std::bitset<8192> pixel buffer.
+
+Screen::refresh() converts the bitset into SSD1106 page format (8 rows of
+8-pixel-high pages × 128 columns) and writes each page in a single I2C
+transaction (command bytes to set page/column address, then data bytes).
+
+The screen is written on every iteration of the main loop. Views write into
+screen.pixels directly via the Renderer.
+
+─── 6.7 View / Renderer (lib/view/) ──────────────────────────────────────────
+
+View.hpp defines view structs that hold display state:
+  MenuView     — list of string items + selected index + title
+  LoadingView  — animated spinner / progress indicator
+  PlayerView   — track name, play/pause status, volume level
+
+Renderer draws view structs into the screen pixel buffer using a monospace
+bitmap Font (lib/view/font/Font.hpp). Text is rendered cell-by-cell; the font
+encodes each glyph as a column-major byte array.
+
+─── 6.8 Button Input (lib/button/) ───────────────────────────────────────────
+
+Button wraps a libgpiod v2 line request. Each of the four buttons gets its
+own Button instance configured for input, falling-edge detection, and hardware
+debounce. ButtonListener holds all four and calls poll(0) (non-blocking) on
+each in the main loop. On a detected edge, it publishes the corresponding
+button event to the EventBus.
+
+GPIO chip path is compiled in as a constant in Button.hpp:
+  "../../../dev/gpiochip4"   (Pi 5)
+  Pi Zero 2 W users must change this to gpiochip0.
+
+─── 6.9 Audio (lib/audio/) ───────────────────────────────────────────────────
+
+AudioManager implements IAudioManager. It initialises SDL2 (SDL_Init) and
+SDL2_mixer (Mix_OpenAudio). The interface exposes:
+  play(path)      — load and play an MP3 file
+  pauseResume()   — toggle pause state
+  stop()          — halt playback
+  setVolume(int)  — set SDL2_mixer volume (0–128 scale)
+
+Currently the hardcoded track is songs/white_zinfandel.mp3, called from
+AudioHandler on first SelectButtonPressed in PlayerState.
+
+MockAudioManager (lib/audio/) provides a no-op implementation for use in
+navigation tests that run without SDL2.
+
+─── 6.10 Bluetooth (lib/bluetooth/) ──────────────────────────────────────────
+
+BluetoothManager implements IBluetoothManager using GObject D-Bus (gio-2.0)
+to communicate with BlueZ on the system bus.
+
+Initialization:
+  - Connects to the system D-Bus (g_bus_get_sync).
+  - Acquires the system object manager proxy for org.bluez.
+  - Registers a NoInputNoOutput agent at /org/bluez/AutoAgent to handle
+    pairing requests without user PIN entry.
+
+Key methods:
+
+  powerOn()
+    Sets org.bluez.Adapter1 "Powered" property to true via D-Bus.
+
+  discoverDevices()
+    Calls StartDiscovery on the adapter, waits ~10 seconds, calls
+    StopDiscovery, then scrapes the object manager for Device1 objects.
+    Filters for audio devices by Class of Device (CoD) bitmask or by the
+    presence of A2DP/AVRCP UUIDs in the device's UUIDs property.
+    Writes results to data/devices/found_devices.txt as "name|MAC" lines.
+    Publishes BluetoothDeviceSearchComplete when done.
+
+  pair(address), trust(address)
+    Calls Pair() and sets "Trusted" on the Device1 object for the given MAC.
+
+  connect(address)
+    Calls Connect() on the Device1 object. Publishes BluetoothConnected on
+    success or BluetoothConnectionFailed on error.
+
+BluetoothDevice (lib/bluetooth/BluetoothDevice.hpp):
+  Plain struct: { std::string name; std::string address; }
+
+MockBluetoothManager (lib/bluetooth/):
+  Stub implementation for tests.
+
+─── 6.11 Storage (lib/storage/) ──────────────────────────────────────────────
+
+DeviceStorage loads and saves Bluetooth device lists as plain text files
+under data/devices/. Format: one device per line, "name|MAC".
+
+File constants:
+  SAVED_DEVICES_FILE   = data/devices/saved_devices.txt
+  FOUND_DEVICES_FILE   = data/devices/found_devices.txt
+  MOCK_DEVICES_FILE    = data/devices/mock_devices.txt (used by tests and the
+                         saved-devices address lookup)
+
+Methods: loadDevices(file), saveDevice(device, file), findAddressByName(name, file)
+
+Note: SavedDevicesState uses findAddressByName against MOCK_DEVICES_FILE to
+resolve connection addresses for saved devices. In production, this file must
+mirror the actual saved MACs, or a future refactor should replace the lookup
+with the MAC stored directly in saved_devices.txt.
+
+─── 6.12 Debugger (lib/debugger/) ────────────────────────────────────────────
+
+A simple compile-time-toggled logging gate. Debugger::debugMode (bool,
+defaulting to false in Debugger.cpp) controls whether debug log calls produce
+output. EventBus::publish logs event type names when debug mode is on.
+
+─── 6.13 Utils / Constants (lib/utils/) ──────────────────────────────────────
+
+constants.h defines shared compile-time constants:
+  SCREEN_WIDTH=128, SCREEN_HEIGHT=64
+  FONT_CELL_WIDTH, FONT_CELL_HEIGHT
+  GPIO pin numbers: UP_BUTTON_PIN=4, DOWN_BUTTON_PIN=5,
+                    SELECT_BUTTON_PIN=6, BACK_BUTTON_PIN=7
+  SDA_PIN=2, SCL_PIN=3 (documented; not used programmatically by Screen)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. COMMUNICATION PROTOCOLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Layer                | Protocol / Interface
+---------------------+----------------------------------------------------------
+Display              | I2C (Linux i2c-dev, ioctl I2C_SLAVE), SSD1106 protocol
+Button input         | GPIO via libgpiod v2 (edge events, falling edge)
+Bluetooth management | D-Bus system bus → BlueZ (org.bluez):
+                     |   Adapter1, Device1, AgentManager1, Agent1,
+                     |   org.freedesktop.DBus.ObjectManager,
+                     |   org.freedesktop.DBus.Properties
+Pairing              | NoInputNoOutput agent (no PIN/passkey required)
+Audio transport      | Bluetooth Classic: A2DP (managed by BlueZ + PulseAudio,
+                     |   not directly by this application)
+Audio playback API   | SDL2 / SDL2_mixer (Mix_LoadMUS, Mix_PlayMusic, etc.)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. USER INTERFACE FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+On boot:
+  MAIN MENU (Player / Bluetooth / Exit)
+     │
+     ├─ SELECT "Player"
+     │    → PLAYER STATE (play/pause, volume, back)
+     │         UP/DOWN: adjust volume
+     │         SELECT: play/pause toggle
+     │         BACK: stop music → MAIN MENU
+     │
+     ├─ SELECT "Bluetooth"
+     │    → BLUETOOTH MENU (Saved Devices / Connect New)
+     │         │
+     │         ├─ SELECT "Connect New"
+     │         │    → SEARCHING (loading animation, ~10s discovery)
+     │         │    → FOUND DEVICES LIST (scroll UP/DOWN, SELECT to connect)
+     │         │         → CONNECTING (loading animation)
+     │         │              → MAIN MENU (on success or failure)
+     │         │
+     │         └─ SELECT "Saved Devices"
+     │              → SAVED DEVICES LIST (scroll UP/DOWN, SELECT to reconnect)
+     │                   → CONNECTING → MAIN MENU
+     │
+     └─ SELECT "Exit"
+          → ExitRequested → program exits
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9. DATA FLOW: BLUETOOTH CONNECTION SEQUENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User selects "Connect New" in Bluetooth menu.
+2. NavigationHandler transitions to SEARCHING_FOR_DEVICES.
+3. SearchingForDevicesState::onEntry() publishes BluetoothDeviceSearchRequested.
+4. BluetoothHandler receives it, calls BluetoothManager::discoverDevices().
+5. BluetoothManager runs ~10s discovery loop via BlueZ D-Bus, filters audio
+   devices by CoD / UUIDs, writes found_devices.txt.
+6. BluetoothManager publishes BluetoothDeviceSearchComplete.
+7. NavigationHandler transitions to FOUND_DEVICES.
+8. User scrolls list; SELECT publishes OpenConnectingStateRequested{address}.
+9. NavigationHandler writes device_info into CONNECTING state, transitions to it.
+10. ConnectingState::onEntry() publishes BluetoothConnectionRequested{address}.
+11. BluetoothHandler calls: pair(address) → trust(address) → saveDevice() →
+    connect(address).
+12. On success: BluetoothConnected published → NavigationHandler → MAIN MENU.
+    On failure: BluetoothConnectionFailed published → NavigationHandler → MAIN MENU.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10. DATA FLOW: AUDIO PLAYBACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User navigates to PLAYER state.
+2. First SELECT press: PlayerState publishes MusicPlayPauseRequested.
+3. AudioHandler checks isFirstPlay flag; calls AudioManager::play("songs/white_zinfandel.mp3").
+4. SDL2_mixer loads and begins streaming the MP3.
+5. Subsequent SELECT presses toggle via AudioManager::pauseResume().
+6. UP/DOWN presses in PlayerState adjust a local volume variable,
+   re-render PlayerView, and publish VolumeChangeRequested{volume}.
+7. AudioHandler calls AudioManager::setVolume(volume).
+8. BACK press publishes MusicStopRequested → AudioManager::stop() → then
+   OpenMainMenuStateRequested → NavigationHandler transitions to MAIN MENU.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+11. TESTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Test source files are in music-card-player/tests/:
+
+  button_test.cpp        — Tests button GPIO edge detection logic
+  state_machine_test.cpp — Tests state transitions and lifecycle callbacks
+  navigation_test.cpp    — Tests full navigation event → state transition flow
+                           using MockAudioManager + MockBluetoothManager
+  bluetooth_test.cpp     — Tests BluetoothManager D-Bus interaction
+
+Mock implementations:
+  lib/audio/MockAudioManager.*        — No-op IAudioManager for navigation tests
+  lib/bluetooth/MockBluetoothManager.* — No-op IBluetoothManager for navigation tests
+
+Test binaries are built and run via `make run_<name>_test`.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+12. DEPLOYMENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+deploy.ps1 (Windows):
+  Copies music-card-player/music-card-player/ to will@truelinelaserspi5.local
+  via SCP. The Pi user must have passwordless SSH access (key-based auth).
+
+deploy.sh (Linux/macOS):
+  Same operation targeting pi@raspberrypi.local.
+
+After deploying, the application is compiled and run on the Pi directly.
+The binary must be executed with appropriate permissions for I2C (/dev/i2c-1),
+GPIO (via the bluetooth and gpio groups), and D-Bus (bluetooth group for BlueZ).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+14. KNOWN ISSUES / DESIGN NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. HARDCODED AUDIO TRACK
+   The music file path (songs/white_zinfandel.mp3) is hardcoded in
+   AudioHandler. The "card player" aspect of the product name implies future
+   track selection via physical NFC/RFID cards or similar, but that mechanism
+   is not yet implemented.
+
+2. BLOCKING BLUETOOTH OPERATIONS
+   discoverDevices() blocks the calling thread for ~10 seconds. During this
+   time the main loop does not run (buttons are not polled, screen is not
+   refreshed), so the UI is frozen. A loading animation is displayed via the
+   SearchingForDevicesState view, but it does not animate during the block.

@@ -233,4 +233,4 @@ i2cdetect -y 1
 
 ### GPIO buttons not working (Pi 5)
 
-The Pi 5 uses a different GPIO chip (`/dev/gpiochip4`) than earlier models like the Zero 2 W (`/dev/gpiochip0`). If buttons aren't detected, check that `ButtonListener.cpp` references the correct chip for your board.
+The Pi 5 uses a different GPIO chip (`/dev/gpiochip0`) than earlier models like the Zero 2 W (`/dev/gpiochip4`). If buttons aren't detected, check that `ButtonListener.cpp` references the correct chip for your board.

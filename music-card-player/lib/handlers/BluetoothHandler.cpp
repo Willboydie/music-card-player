@@ -30,9 +30,7 @@ BluetoothHandler::BluetoothHandler(EventBus& bus, IBluetoothManager& bluetoothMa
         }
 
         // Pair, trust, persist, then connect
-        if (bt.pairAndSave(device) && bt.connect(connectingAddress)) {
-            bus.publish(BluetoothConnected{});
-        } else {
+        if (!bt.pairAndSave(device) || !bt.connect(connectingAddress)) {
             std::cerr << "BluetoothHandler: connection failed for "
                       << connectingAddress << std::endl;
             bus.publish(BluetoothConnectionFailed{});
