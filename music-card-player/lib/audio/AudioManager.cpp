@@ -72,6 +72,7 @@ bool AudioManager::play(const std::string& filepath) {
         return false;
     }
 
+    started = true;
     return true;
 }
 

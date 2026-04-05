@@ -32,6 +32,8 @@ public:
     bool isPlaying() const override;
     bool isPaused() const override;
 
+    bool hasStarted() const override { return started; }
+
 private:
     static constexpr int MaxVolume = MIX_MAX_VOLUME;  // 128
 
@@ -39,7 +41,7 @@ private:
     bool initialised;
     Mix_Music* currentTrack;
     float volume;
-    // bool started = false;
+    bool started = false;
 
     int toSdlVolume(float level) const;
 };

@@ -26,11 +26,13 @@ public:
 
     bool isPlaying() const override { return playing_; }
     bool isPaused() const override { return !playing_; }
-
+    bool hasStarted() const override { return started; }
+    
 private:
     EventBus& eventBus_;
     bool initialised_ = false;
-    std::string currentTrack_ = "Baby by Justin Bieber.mp3";
     float volume_ = 0.0f;
     bool playing_ = false;
+    
+    bool started = false;
 };

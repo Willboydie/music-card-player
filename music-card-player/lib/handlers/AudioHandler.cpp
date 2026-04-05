@@ -4,16 +4,12 @@ AudioHandler::AudioHandler(EventBus& bus, IAudioManager& audioManager)
     : bus(bus)
     , audio(audioManager)
 {
-    bus.subscribe<MusicPlayRequested>([&](const MusicPlayRequested&) {
-        if (!audio.started) {
-            audio.play("../../../songs/white_zinfandel.mp3");
+    bus.subscribe<MusicPlayPauseRequested>([&](const MusicPlayPauseRequested&) {
+        if (!audio.hasStarted()) {
+            audio.play("songs/white_zinfandel.mp3");
         } else {
             audio.pauseResume();
         }
-    });
-
-    bus.subscribe<MusicPauseRequested>([&](const MusicPauseRequested&) {
-        audio.pauseResume();
     });
 
     bus.subscribe<VolumeChangeRequested>([&](const VolumeChangeRequested& e) {

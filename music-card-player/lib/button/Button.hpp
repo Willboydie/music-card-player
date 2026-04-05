@@ -4,7 +4,7 @@
 #include <iostream>
 #include <poll.h>
 
-static constexpr const char* GPIO_CHIP_PATH = "../../../dev/gpiochip0"; // check your chip name for a new device 
+static constexpr const char* GPIO_CHIP_PATH = "../../../dev/gpiochip4"; // raspi5: 0, zero2W: 4
 
 // Represents a single active-low push button on a GPIO pin.
 //

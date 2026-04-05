@@ -211,7 +211,7 @@ void BluetoothManager::discoverDevices() {
         eventBus_.publish(BluetoothDiscoveryFailed{});
         return;
     }
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
     if (!stopDiscovery()) {
         eventBus_.publish(BluetoothDiscoveryFailed{});
         return;
@@ -289,15 +289,42 @@ std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
                 v = g_variant_lookup_value(props, "Address", nullptr);
                 if (v) { device.address = g_variant_get_string(v, nullptr); g_variant_unref(v); }
 
-                // Filter: only include Audio/Video devices (speakers, headphones, headsets)
-                // Bluetooth CoD: major device class is bits 12-14; 0x04 = Audio/Video
                 bool isAudio = false;
+
+                // Check Class of Device (CoD): major device class is bits 8-12
                 v = g_variant_lookup_value(props, "Class", nullptr);
                 if (v) {
                     guint32 deviceClass = g_variant_get_uint32(v);
                     g_variant_unref(v);
-                    const guint32 majorClass = (deviceClass >> 12) & 0x07;
-                    isAudio = (majorClass == 0x04);
+                    guint32 majorClass = (deviceClass >> 8) & 0x1F;
+                    if (majorClass == 0x04) isAudio = true;
+                }
+
+                // Fallback: check UUIDs for common audio profiles
+                if (!isAudio) {
+                    v = g_variant_lookup_value(props, "UUIDs", nullptr);
+                    if (v) {
+                        GVariantIter uuidIter;
+                        g_variant_iter_init(&uuidIter, v);
+                        const gchar* uuid;
+                        while (g_variant_iter_next(&uuidIter, "&s", &uuid)) {
+                            std::string u(uuid);
+                            if (u.size() >= 8) {
+                                std::string prefix = u.substr(0, 8);
+                                for (auto& c : prefix) c = std::tolower(c);
+                                if (prefix == "0000110a" ||
+                                    prefix == "0000110b" ||
+                                    prefix == "0000110d" ||
+                                    prefix == "0000110e" ||
+                                    prefix == "00001108" ||
+                                    prefix == "0000111e") {
+                                    isAudio = true;
+                                    break;
+                                }
+                            }
+                        }
+                        g_variant_unref(v);
+                    }
                 }
 
                 if (isAudio) {

@@ -11,7 +11,7 @@
 #   remote_path = ~/music-card-player
 
 param(
-    [string]$Remote = "will@truelinelaserspi5",
+    [string]$Remote = "will@truelinelaserspi5.local",
     [string]$Dest   = "~/music-card-player"
 )
 

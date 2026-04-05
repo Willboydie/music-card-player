@@ -13,7 +13,6 @@ static constexpr int scl_pin = SCL_PIN;
 
 
 void AppController::run() {
-    // auto start_time = std::chrono::steady_clock::now();
 
     // ── Core infrastructure ──────────────────────────────────────
     EventBus bus;
@@ -49,20 +48,5 @@ void AppController::run() {
     while (running) {
         buttons.poll();
         screen.refresh();
-        
-        // if (std::chrono::steady_clock::now() - start_time > std::chrono::seconds(1)) {
-        //     if (std::cin.get() == 'q') {
-        //         std::cout << "AppController: Exiting..." << std::endl;
-        //         break;
-        //     }
-        //     if (std::cin.get() == 'D') {
-        //         Debugger::debugMode = true;
-        //         std::cout << "Debug mode enabled" << std::endl;
-        //     } else if (std::cin.get() == 'D') {
-        //         Debugger::debugMode = false;
-        //         std::cout << "Debug mode disabled" << std::endl;
-        //     }
-        //     start_time = std::chrono::steady_clock::now();
-        // }
     }
 }

@@ -34,7 +34,7 @@ public:
         view.isPlaying = !view.isPlaying;
         renderer.render(view);
         screen.refresh();
-        bus.publish(MusicPlayRequested{});
+        bus.publish(MusicPlayPauseRequested{});
     }
 
     void onEvent(const BackButtonPressed&) override {

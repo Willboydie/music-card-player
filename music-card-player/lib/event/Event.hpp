@@ -30,8 +30,7 @@ struct OpenConnectingStateRequested {
 };
 
 // player
-struct MusicPlayRequested {};
-struct MusicPauseRequested {};
+struct MusicPlayPauseRequested {};
 struct VolumeChangeRequested {
     float level;
 };

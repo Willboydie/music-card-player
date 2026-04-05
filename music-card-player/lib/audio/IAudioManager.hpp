@@ -23,5 +23,5 @@ public:
     virtual bool isPlaying() const = 0;
     virtual bool isPaused() const = 0;
 
-    bool started = false;
+    virtual bool hasStarted() const = 0;
 };
