@@ -78,6 +78,13 @@ From PowerShell on your development machine:
 
 This copies the entire project to `~/music-card-player` on the Pi via `scp`.
 
+### Song Upload (for prototyping)
+Use
+```powershell
+scp -r songs user@your-pi-username.local:music-card-player
+```
+to upload the song folder to the pi.
+
 ## Building
 
 SSH into your Pi, then:
@@ -140,20 +147,18 @@ src/
     └── states/                       # State base class + concrete states
         ├── main_menu/
         ├── player/
-        ├── roles/menu_state/         # MenuState base (scrollable menus)
-        └── bluetooth/                # Bluetooth sub-states
-            ├── saved_devices/
-            ├── connect_new/
-            │   ├── found_devices/
-            │   └── searching_for_devices/
-            └── bluetooth_connecting/
+        ├── saved_devices/
+        ├── connect_new/
+        ├── found_devices/
+        ├── searching_for_devices/
+        ├── bluetooth_connecting/
 ```
 
 ## Wireless Audio Setup
 
 ```
 ┌─────────────┐      ┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│  Your App   │ ──▶  │ PulseAudio  │ ──▶  │   BlueZ      │ ──▶  │ Headphones  │
+│  Your App   │ ──▶  │ PulseAudio  │ ──▶ │   BlueZ      │ ──▶  │ Headphones  │
 │ (SDL2/ALSA) │      │  (Router)   │      │ (Bluetooth)  │      │   (A2DP)    │
 └─────────────┘      └─────────────┘      └──────────────┘      └─────────────┘
 ```
@@ -180,8 +185,8 @@ After=bluetooth.target graphical.target
 
 [Service]
 Type=simple
-User=pi
-ExecStart=/home/pi/music-card-player/music-card-player
+User=rory
+ExecStart=/home/rory/music-card-player/music-card-player
 Restart=on-failure
 RestartSec=5
 
@@ -228,4 +233,4 @@ i2cdetect -y 1
 
 ### GPIO buttons not working (Pi 5)
 
-The Pi 5 uses a different GPIO chip (`/dev/gpiochip4`) than earlier models (`/dev/gpiochip0`). If buttons aren't detected, check that `ButtonListener.cpp` references the correct chip for your board.
+The Pi 5 uses a different GPIO chip (`/dev/gpiochip4`) than earlier models like the Zero 2 W (`/dev/gpiochip0`). If buttons aren't detected, check that `ButtonListener.cpp` references the correct chip for your board.
