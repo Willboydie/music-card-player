@@ -38,10 +38,12 @@ private:
     static constexpr int MaxVolume = MIX_MAX_VOLUME;  // 128
 
     EventBus& eventBus_;
-    bool initialised;
+    bool sdlReady = false;
+    bool initialised = false;
     Mix_Music* currentTrack;
     float volume;
     bool started = false;
 
+    bool openMixer();
     int toSdlVolume(float level) const;
 };

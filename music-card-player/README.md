@@ -96,17 +96,17 @@ cd ~/music-card-player
 ### Raspberry Pi 5 (default)
 
 ```bash
-make -j4
+make -j4 CXXFLAGS="-Wall -Wextra -std=c++17 -O2 -march=armv8.2-a+crypto -mtune=cortex-a76"
 ```
 
 The default Makefile uses `-march=armv8.2-a+crypto -mtune=cortex-a76` which is optimal for the Pi 5.
 
 ### Raspberry Pi Zero 2 W
 
-Override the architecture flags for the Cortex-A53:
+Uses the architecture flags for the Cortex-A53 by default.
 
 ```bash
-make -j4 CXXFLAGS="-Wall -Wextra -std=c++17 -O2 -march=armv8-a+crc -mtune=cortex-a53"
+make
 ```
 
 ### Clean rebuild
@@ -175,26 +175,67 @@ pactl set-default-sink bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink
 
 ## Auto-Start on Boot
 
-Create a systemd service:
+Enable user lingering so the user's systemd instance (and its session bus,
+PulseAudio, etc.) starts at boot without requiring a login:
 
 ```bash
-sudo tee /etc/systemd/system/music-card-player.service > /dev/null <<'EOF'
+sudo loginctl enable-linger rory
+```
+
+Remove the old system service if it exists:
+
+```bash
+sudo systemctl disable --now music-card-player.service 2>/dev/null
+sudo rm -f /etc/systemd/system/music-card-player.service
+sudo systemctl daemon-reload
+```
+
+Create a **user** service:
+
+```bash
+mkdir -p ~/.config/systemd/user
+
+cat > ~/.config/systemd/user/music-card-player.service <<'EOF'
 [Unit]
 Description=Music Card Player
-After=bluetooth.target graphical.target
+After=default.target
 
 [Service]
 Type=simple
-User=rory
+# Relative paths in DeviceStorage (data/devices/…) use the process working directory
+WorkingDirectory=/home/rory/music-card-player
 ExecStart=/home/rory/music-card-player/music-card-player
 Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 EOF
 
-sudo systemctl enable --now music-card-player.service
+systemctl --user daemon-reload
+systemctl --user enable --now music-card-player.service
+```
+
+Useful commands:
+
+```bash
+systemctl --user status music-card-player
+systemctl --user restart music-card-player
+```
+
+### Viewing logs
+
+User service output is also tagged on the system journal.
+This works even before fixing groups, if you use `sudo`:
+
+```bash
+sudo journalctl _SYSTEMD_USER_UNIT=music-card-player.service -f
+```
+
+You can always see recent lines without `journalctl`:
+
+```bash
+systemctl --user status music-card-player.service
 ```
 
 ## Troubleshooting

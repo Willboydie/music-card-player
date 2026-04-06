@@ -9,6 +9,9 @@
 
 // Flat-file persistence for BluetoothDevice lists.
 //
+// Paths are relative to the process current working directory unless
+// MUSIC_CARD_PLAYER_HOME is set (absolute base directory for data files).
+//
 // Two predefined files:
 //   SAVED_DEVICES_FILE  – devices the user has paired with (persistent)
 //   FOUND_DEVICES_FILE  – devices discovered during the most recent scan (transient)

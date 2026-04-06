@@ -1,23 +1,40 @@
 #include "DeviceStorage.hpp"
 
+#include <cstdlib>
+#include <filesystem>
+
 static constexpr char Delimiter = '|';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+namespace {
 
-static std::string trim(const std::string& s) {
+std::string resolveDataPath(const std::string& filepath) {
+    if (!filepath.empty() && filepath[0] == '/')
+        return filepath;
+    const char* root = std::getenv("MUSIC_CARD_PLAYER_HOME");
+    if (root && root[0]) {
+        std::string base(root);
+        if (base.back() != '/') base += '/';
+        return base + filepath;
+    }
+    return filepath;
+}
+
+std::string trim(const std::string& s) {
     auto start = s.find_first_not_of(" \t");
     if (start == std::string::npos) return "";
     auto end = s.find_last_not_of(" \t");
     return s.substr(start, end - start + 1);
 }
 
+} // namespace
 
 // ── Bulk I/O ─────────────────────────────────────────────────────────────────
 
 std::vector<BluetoothDevice> DeviceStorage::load(const std::string& filepath) {
-    Debugger::debug_msg("DeviceStorage: loading " + filepath);
+    const std::string path = resolveDataPath(filepath);
+    Debugger::debug_msg("DeviceStorage: loading " + path);
     std::vector<BluetoothDevice> devices;
-    std::ifstream file(filepath);
+    std::ifstream file(path);
     if (!file.is_open()) return devices;
 
     std::string line;
@@ -41,8 +58,16 @@ std::vector<BluetoothDevice> DeviceStorage::load(const std::string& filepath) {
 
 bool DeviceStorage::save(const std::vector<BluetoothDevice>& devices,
                           const std::string& filepath) {
-    Debugger::debug_msg("DeviceStorage: saving " + filepath);
-    std::ofstream file(filepath);
+    const std::string path = resolveDataPath(filepath);
+    Debugger::debug_msg("DeviceStorage: saving " + path);
+    {
+        const std::filesystem::path parent = std::filesystem::path(path).parent_path();
+        if (!parent.empty()) {
+            std::error_code ec;
+            std::filesystem::create_directories(parent, ec);
+        }
+    }
+    std::ofstream file(path);
     if (!file.is_open()) return false;
 
     file << "# Bluetooth devices – name|MAC\n";

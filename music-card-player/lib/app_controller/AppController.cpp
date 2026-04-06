@@ -12,7 +12,8 @@ static constexpr int sda_pin = SDA_PIN;
 static constexpr int scl_pin = SCL_PIN;
 
 
-void AppController::run() {
+void AppController::run(bool debug) {
+    Debugger::debugMode = debug;
 
     // ── Core infrastructure ──────────────────────────────────────
     EventBus bus;

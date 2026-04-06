@@ -4,7 +4,7 @@
 
 CXX        = g++
 CXXFLAGS   = -Wall -Wextra -std=c++17 -O2 \
-             -march=armv8.2-a+crypto -mtune=cortex-a76
+			 -march=armv8-a+crc -mtune=cortex-a53
 PKG_CONFIG = pkg-config
 
 TARGET     = music-card-player

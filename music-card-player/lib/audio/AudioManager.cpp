@@ -4,7 +4,6 @@
 
 AudioManager::AudioManager(EventBus& bus)
     : eventBus_(bus)
-    , initialised(false)
     , currentTrack(nullptr)
     , volume(1.0f)
 {}
@@ -14,18 +13,26 @@ AudioManager::~AudioManager() {
 }
 
 bool AudioManager::initialise() {
-    Debugger::debug_msg("AudioManager: initialising");
+    Debugger::debug_msg("AudioManager: initialising SDL");
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         std::cerr << "AudioManager: SDL init failed: "
                   << SDL_GetError() << std::endl;
         return false;
     }
+    sdlReady = true;
 
-    // 44100 Hz, 16-bit stereo, 2048 byte chunks
+    if (openMixer()) return true;
+
+    Debugger::debug_msg("AudioManager: no audio device yet, will retry when playback is requested");
+    return false;
+}
+
+bool AudioManager::openMixer() {
+    if (initialised) return true;
+    if (!sdlReady) return false;
+
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-        std::cerr << "AudioManager: mixer init failed: "
-                  << Mix_GetError() << std::endl;
-        SDL_Quit();
+        Debugger::debug_msg(std::string("AudioManager: mixer not available: ") + Mix_GetError());
         return false;
     }
 
@@ -36,26 +43,31 @@ bool AudioManager::initialise() {
     }
 
     initialised = true;
-    Debugger::debug_msg("AudioManager: initialised");
+    Debugger::debug_msg("AudioManager: mixer initialised");
     return true;
 }
 
 void AudioManager::shutdown() {
-    if (!initialised) return;
     Debugger::debug_msg("AudioManager: shutting down");
 
-    stop();
-    Mix_CloseAudio();
-    Mix_Quit();
-    SDL_Quit();
-    initialised = false;
+    if (initialised) {
+        stop();
+        Mix_CloseAudio();
+        Mix_Quit();
+        initialised = false;
+    }
+    if (sdlReady) {
+        SDL_Quit();
+        sdlReady = false;
+    }
 }
 
 
 // ── Playback ─────────────────────────────────────────────────────────────────
 
 bool AudioManager::play(const std::string& filepath) {
-    if (!initialised || started) return false;
+    if (started) return false;
+    if (!initialised && !openMixer()) return false;
     Debugger::debug_msg("AudioManager: playing " + filepath);
     stop();
 

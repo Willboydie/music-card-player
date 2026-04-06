@@ -30,5 +30,5 @@ public:
     AppController() = default;
     ~AppController() = default;
 
-    void run();
+    void run(bool debug);
 };

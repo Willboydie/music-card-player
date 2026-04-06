@@ -167,22 +167,39 @@ BluetoothManager::~BluetoothManager() {
 
 bool BluetoothManager::initialise() {
     Debugger::debug_msg("BluetoothManager: initialising");
-    GError* error = nullptr;
-    dbus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, &error);
-    if (error) {
-        std::cerr << "BluetoothManager: D-Bus connection failed: "
-                  << error->message << std::endl;
-        g_error_free(error);
-        return false;
+
+    for (int attempt = 0; attempt < BT_MAX_RETRIES; ++attempt) {
+        GError* error = nullptr;
+        dbus = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, &error);
+        if (error) {
+            std::cerr << "BluetoothManager: D-Bus connection failed: "
+                      << error->message << std::endl;
+            g_error_free(error);
+            dbus = nullptr;
+            std::this_thread::sleep_for(BT_RETRY_INTERVAL);
+            continue;
+        }
+
+        if (adapterReady()) {
+            if (!registerAgent()) {
+                std::cerr << "BluetoothManager: agent registration failed, "
+                             "pairing may not work" << std::endl;
+            }
+            Debugger::debug_msg("BluetoothManager: initialised");
+            return true;
+        }
+
+        Debugger::debug_msg("BluetoothManager: adapter not ready, retrying ("
+                            + std::to_string(attempt + 1) + "/"
+                            + std::to_string(BT_MAX_RETRIES) + ")");
+        g_object_unref(dbus);
+        dbus = nullptr;
+        std::this_thread::sleep_for(BT_RETRY_INTERVAL);
     }
 
-    if (!registerAgent()) {
-        std::cerr << "BluetoothManager: agent registration failed, "
-                     "pairing may not work" << std::endl;
-    }
-
-    Debugger::debug_msg("BluetoothManager: initialised");
-    return true;
+    std::cerr << "BluetoothManager: adapter not ready after "
+              << BT_MAX_RETRIES << " attempts" << std::endl;
+    return false;
 }
 
 void BluetoothManager::shutdown() {
@@ -197,10 +214,30 @@ void BluetoothManager::shutdown() {
 
 // ── Adapter ──────────────────────────────────────────────────────────────────
 
+bool BluetoothManager::adapterReady() {
+    GVariant* value = getProperty(adapterPath, "org.bluez.Adapter1", "Address");
+    if (!value) return false;
+    g_variant_unref(value);
+    return true;
+}
+
 bool BluetoothManager::powerOn() {
     Debugger::debug_msg("BluetoothManager: powering on");
-    return setProperty(adapterPath, "org.bluez.Adapter1",
-                       "Powered", g_variant_new_boolean(TRUE));
+
+    for (int attempt = 0; attempt < BT_MAX_RETRIES; ++attempt) {
+        if (setProperty(adapterPath, "org.bluez.Adapter1",
+                        "Powered", g_variant_new_boolean(TRUE))) {
+            return true;
+        }
+        Debugger::debug_msg("BluetoothManager: powerOn failed, retrying ("
+                            + std::to_string(attempt + 1) + "/"
+                            + std::to_string(BT_MAX_RETRIES) + ")");
+        std::this_thread::sleep_for(BT_RETRY_INTERVAL);
+    }
+
+    std::cerr << "BluetoothManager: powerOn failed after "
+              << BT_MAX_RETRIES << " attempts" << std::endl;
+    return false;
 }
 
 
@@ -242,6 +279,7 @@ bool BluetoothManager::stopDiscovery() {
 std::vector<BluetoothDevice> BluetoothManager::getDiscoveredDevices() {
     Debugger::debug_msg("BluetoothManager: getting discovered devices");
     std::vector<BluetoothDevice> devices;
+    if (!dbus) return devices;
     GError* error = nullptr;
 
     GVariant* result = g_dbus_connection_call_sync(
@@ -432,6 +470,7 @@ bool BluetoothManager::callMethod(const std::string& objectPath,
                                    const std::string& method,
                                    GVariant* params,
                                    int timeoutMs) {
+    if (!dbus) return false;
     GError* error = nullptr;
     GVariant* result = g_dbus_connection_call_sync(
         dbus, "org.bluez",
@@ -454,6 +493,7 @@ bool BluetoothManager::setProperty(const std::string& objectPath,
                                     const std::string& interface,
                                     const std::string& property,
                                     GVariant* value) {
+    if (!dbus) return false;
     GError* error = nullptr;
     GVariant* result = g_dbus_connection_call_sync(
         dbus, "org.bluez",
@@ -477,6 +517,7 @@ bool BluetoothManager::setProperty(const std::string& objectPath,
 GVariant* BluetoothManager::getProperty(const std::string& objectPath,
                                          const std::string& interface,
                                          const std::string& property) {
+    if (!dbus) return nullptr;
     GError* error = nullptr;
     GVariant* result = g_dbus_connection_call_sync(
         dbus, "org.bluez",

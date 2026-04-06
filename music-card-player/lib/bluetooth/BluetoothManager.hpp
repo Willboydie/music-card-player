@@ -14,6 +14,9 @@
 #include <chrono>
 #include <thread>
 
+static constexpr int BT_MAX_RETRIES = 12;
+static constexpr auto BT_RETRY_INTERVAL = std::chrono::seconds(5);
+
 class BluetoothManager : public IBluetoothManager {
 public:
     explicit BluetoothManager(EventBus& bus);
@@ -44,6 +47,8 @@ private:
 
     bool registerAgent();
     void unregisterAgent();
+
+    bool adapterReady();
 
     bool startDiscovery();
     bool stopDiscovery();
